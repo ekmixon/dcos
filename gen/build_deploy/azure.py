@@ -99,7 +99,7 @@ def validate_cloud_config(cc_string):
     '''
     if "'" in cc_string:
         print("ERROR: Illegal cloud config string detected.", file=sys.stderr)
-        print("ERROR: {} contains a `'`".format(cc_string), file=sys.stderr)
+        print(f"ERROR: {cc_string} contains a `'`", file=sys.stderr)
         sys.exit(1)
 
 
@@ -158,8 +158,13 @@ def gen_templates(gen_arguments, arm_template, extra_sources):
     '''
     results = gen.generate(
         arguments=gen_arguments,
-        extra_templates=['azure/' + cloud_config_yaml, 'azure/templates/' + arm_template + '.json'],
-        extra_sources=[azure_base_source] + extra_sources)
+        extra_templates=[
+            f'azure/{cloud_config_yaml}',
+            f'azure/templates/{arm_template}.json',
+        ],
+        extra_sources=[azure_base_source] + extra_sources,
+    )
+
 
     cloud_config = results.templates[cloud_config_yaml]
 
@@ -181,10 +186,12 @@ def gen_templates(gen_arguments, arm_template, extra_sources):
 
     # Render the arm
     arm = render_arm(
-        results.templates[arm_template + '.json'],
+        results.templates[f'{arm_template}.json'],
         variant_cloudconfig['master'],
         variant_cloudconfig['slave'],
-        variant_cloudconfig['slave_public'])
+        variant_cloudconfig['slave_public'],
+    )
+
 
     return (arm, results)
 
@@ -261,10 +268,11 @@ def make_template(num_masters, gen_arguments, varietal, bootstrap_variant_prefix
         raise ValueError("Unknown Azure varietal specified")
 
     yield {
-        'channel_path': 'azure/{}{}-{}master.azuredeploy.json'.format(bootstrap_variant_prefix, varietal, num_masters),
+        'channel_path': f'azure/{bootstrap_variant_prefix}{varietal}-{num_masters}master.azuredeploy.json',
         'local_content': arm,
-        'content_type': 'application/json; charset=utf-8'
+        'content_type': 'application/json; charset=utf-8',
     }
+
     for filename in results.stable_artifacts:
         yield {
             'reproducible_path': filename,
@@ -299,17 +307,27 @@ def gen_buttons(build_name, reproducible_artifact_path, tag, commit, download_ur
     Generate the button page, that is, "Deploy a cluster to Azure" page
     '''
     dcos_urls = [
-        encode_url_as_param(DOWNLOAD_URL_TEMPLATE.format(
-            download_url=download_url,
-            reproducible_artifact_path=reproducible_artifact_path,
-            arm_template_name='dcos-{}master.azuredeploy.json'.format(x)))
-        for x in [1, 3, 5]]
+        encode_url_as_param(
+            DOWNLOAD_URL_TEMPLATE.format(
+                download_url=download_url,
+                reproducible_artifact_path=reproducible_artifact_path,
+                arm_template_name=f'dcos-{x}master.azuredeploy.json',
+            )
+        )
+        for x in [1, 3, 5]
+    ]
+
     acs_urls = [
-        encode_url_as_param(DOWNLOAD_URL_TEMPLATE.format(
-            download_url=download_url,
-            reproducible_artifact_path=reproducible_artifact_path,
-            arm_template_name='acs-{}master.azuredeploy.json'.format(x)))
-        for x in [1, 3, 5]]
+        encode_url_as_param(
+            DOWNLOAD_URL_TEMPLATE.format(
+                download_url=download_url,
+                reproducible_artifact_path=reproducible_artifact_path,
+                arm_template_name=f'acs-{x}master.azuredeploy.json',
+            )
+        )
+        for x in [1, 3, 5]
+    ]
+
 
     return gen.template.parse_resources('azure/templates/azure.html').render({
         'build_name': build_name,

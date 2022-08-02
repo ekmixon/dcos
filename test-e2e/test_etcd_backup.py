@@ -32,7 +32,7 @@ def get_etcdctl_with_base_args(
     ever considering the certificates involved, we group these arguments to
     generate the basic items to execute either etcdctl or dcos-etcdctl
     """
-    return [ETCDCTL_PATH, "--endpoints=http://{}:2379".format(endpoint_ip)]
+    return [ETCDCTL_PATH, f"--endpoints=http://{endpoint_ip}:2379"]
 
 
 def get_dcos_etcdctl() -> List[str]:
@@ -123,8 +123,7 @@ class EtcdClient():
 
 @pytest.fixture()
 def etcd_client(static_three_master_cluster: Cluster) -> EtcdClient:
-    etcd_client = EtcdClient(static_three_master_cluster.masters)
-    return etcd_client
+    return EtcdClient(static_three_master_cluster.masters)
 
 
 @pytest.mark.skipif(

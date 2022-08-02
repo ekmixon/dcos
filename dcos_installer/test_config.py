@@ -6,7 +6,7 @@ def test_normalize_config_validation_exception():
     errors = {
         'key': {'message': 'test'},
     }
-    validation_error = ValidationError(errors=errors, unset=set(['one', 'two']))
+    validation_error = ValidationError(errors=errors, unset={'one', 'two'})
     normalized = config.normalize_config_validation_exception(validation_error)
 
     expected = {

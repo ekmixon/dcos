@@ -36,7 +36,7 @@ def ping_mesos_agent(ar,
             should respoind to the request
         agent_id (str): id of the agent to ping
     """
-    url = ar.make_url_from_path('/agent/{}/blah/blah'.format(agent_id))
+    url = ar.make_url_from_path(f'/agent/{agent_id}/blah/blah')
 
     resp = requests.get(url,
                         allow_redirects=False,
@@ -68,7 +68,7 @@ def generic_no_slash_redirect_test(ar, path, code=301, headers=None):
     assert r.status_code == code
     # Redirect has trailing slash added and can be absolute or relative
     absolute = urljoin(url, r.headers['Location'])
-    assert absolute == url + '/'
+    assert absolute == f'{url}/'
 
 
 def generic_verify_response_test(
@@ -145,10 +145,10 @@ def generic_upstream_cookies_verify_test(
 
     # Let's make sure that we got not more than one 'Cookie' header:
     # https://tools.ietf.org/html/rfc6265#section-5.4
-    cookie_headers = []
-    for header in req_data['headers']:
-        if header[0] == 'Cookie':
-            cookie_headers.append(header)
+    cookie_headers = [
+        header for header in req_data['headers'] if header[0] == 'Cookie'
+    ]
+
     assert len(cookie_headers) <= 1
 
     if len(cookie_headers) == 1:
@@ -167,7 +167,7 @@ def generic_upstream_cookies_verify_test(
     if assert_cookies_absent is not None:
         jar_cookies_set = set(jar.keys())
         cookies_absent_set = set(assert_cookies_absent)
-        assert jar_cookies_set.intersection(cookies_absent_set) == set()
+        assert not jar_cookies_set.intersection(cookies_absent_set)
 
 
 def generic_upstream_headers_verify_test(
@@ -359,18 +359,14 @@ def verify_header(headers, header_name, header_value):
         AssertionError: header has not been found, there is more than one header
             with given name or header has incorrect value
     """
-    matching_headers = list()
-
-    for header in headers:
-        if header[0] == header_name:
-            matching_headers.append(header)
+    matching_headers = [header for header in headers if header[0] == header_name]
 
     # Hmmm....
     if len(matching_headers) != 1:
-        if len(matching_headers) == 0:
-            msg = "Header `{}` has not been found".format(header_name)
+        if not matching_headers:
+            msg = f"Header `{header_name}` has not been found"
         elif len(matching_headers) > 1:
-            msg = "More than one `{}` header has been found".format(header_name)
+            msg = f"More than one `{header_name}` header has been found"
 
         assert len(matching_headers) == 1, msg
 

@@ -59,15 +59,16 @@ class SourceFetcher(metaclass=abc.ABCMeta):
 
 
 def get_git_sha1(bare_folder, ref):
-        try:
-            return check_output([
-                "git",
-                "--git-dir", bare_folder,
-                "rev-parse", ref + "^{commit}"
-            ]).decode('ascii').strip()
-        except CalledProcessError as ex:
-            raise ValidationError(
-                "Unable to find ref '{}' in '{}': {}".format(ref, bare_folder, ex)) from ex
+    try:
+        return check_output([
+            "git",
+            "--git-dir", bare_folder,
+            "rev-parse", ref + "^{commit}"
+        ]).decode('ascii').strip()
+    except CalledProcessError as ex:
+        raise ValidationError(
+            f"Unable to find ref '{ref}' in '{bare_folder}': {ex}"
+        ) from ex
 
 
 class GitSrcFetcher(SourceFetcher):
@@ -82,7 +83,7 @@ class GitSrcFetcher(SourceFetcher):
                 "checkout), and 'ref_origin' (the branch/tag ref was derived from)")
 
         if not is_sha(src_info['ref']):
-            raise ValidationError("ref must be a sha1. Got: {}".format(src_info['ref']))
+            raise ValidationError(f"ref must be a sha1. Got: {src_info['ref']}")
 
         self.url = src_info['git']
         self.ref = src_info['ref']
@@ -102,14 +103,20 @@ class GitSrcFetcher(SourceFetcher):
         try:
             origin_commit = get_git_sha1(self.bare_folder, self.ref_origin)
         except Exception as ex:
-            raise ValidationError("Unable to find sha1 of ref_origin {}: {}".format(self.ref_origin, ex))
+            raise ValidationError(
+                f"Unable to find sha1 of ref_origin {self.ref_origin}: {ex}"
+            )
+
         if self.ref != origin_commit:
             logger.warning(
-                "Current ref doesn't match the ref origin. "
-                "Package ref should probably be updated to pick up "
-                "new changes to the code:" +
-                " Current: {}, Origin: {}".format(self.ref,
-                                                  origin_commit))
+                (
+                    "Current ref doesn't match the ref origin. "
+                    "Package ref should probably be updated to pick up "
+                    "new changes to the code:"
+                    + f" Current: {self.ref}, Origin: {origin_commit}"
+                )
+            )
+
 
         # Clone into `src/`.
         if is_windows:
@@ -119,15 +126,19 @@ class GitSrcFetcher(SourceFetcher):
             check_call(["git", "clone", "-q", self.bare_folder, directory])
 
         # Checkout from the bare repo in the cache folder at the specific sha1
-        check_call([
-            "git",
-            "--git-dir",
-            directory + "/.git",
-            "--work-tree",
-            directory, "checkout",
-            "-f",
-            "-q",
-            self.ref])
+        check_call(
+            [
+                "git",
+                "--git-dir",
+                f"{directory}/.git",
+                "--work-tree",
+                directory,
+                "checkout",
+                "-f",
+                "-q",
+                self.ref,
+            ]
+        )
 
 
 class GitLocalSrcFetcher(SourceFetcher):
@@ -143,7 +154,10 @@ class GitLocalSrcFetcher(SourceFetcher):
                                   "when used with git_local. Using a relative path means others "
                                   "that clone the repository will have things just work rather "
                                   "than a path.")
-        self.src_repo_path = os.path.normpath(working_directory + '/' + src_info['rel_path']).rstrip('/')
+        self.src_repo_path = os.path.normpath(
+            f'{working_directory}/' + src_info['rel_path']
+        ).rstrip('/')
+
 
         # Make sure there are no local changes, we can't `git clone` local changes.
         try:
@@ -164,10 +178,12 @@ class GitLocalSrcFetcher(SourceFetcher):
                                       "`git -C {0} reset --soft HEAD^` to get back to where you were.\n\n"
                                       "Found changes: {1}".format(self.src_repo_path, git_status))
         except CalledProcessError:
-            raise ValidationError("Unable to check status of git_local_work checkout {}. Is the "
-                                  "rel_path correct?".format(src_info['rel_path']))
+            raise ValidationError(
+                f"Unable to check status of git_local_work checkout {src_info['rel_path']}. Is the rel_path correct?"
+            )
 
-        self.commit = get_git_sha1(self.src_repo_path + "/.git", "HEAD")
+
+        self.commit = get_git_sha1(f"{self.src_repo_path}/.git", "HEAD")
 
     def get_id(self):
         return {"commit": self.commit}
@@ -177,18 +193,22 @@ class GitLocalSrcFetcher(SourceFetcher):
         check_call(["git", "clone", "-q", self.src_repo_path, directory])
 
         # Make sure we got the right commit as head
-        assert get_git_sha1(directory + "/.git", "HEAD") == self.commit
+        assert get_git_sha1(f"{directory}/.git", "HEAD") == self.commit
 
         # Checkout from the bare repo in the cache folder at the specific sha1
-        check_call([
-            "git",
-            "--git-dir",
-            directory + "/.git",
-            "--work-tree",
-            directory, "checkout",
-            "-f",
-            "-q",
-            self.commit])
+        check_call(
+            [
+                "git",
+                "--git-dir",
+                f"{directory}/.git",
+                "--work-tree",
+                directory,
+                "checkout",
+                "-f",
+                "-q",
+                self.commit,
+            ]
+        )
 
 
 def _identify_archive_type(filename):
@@ -214,10 +234,7 @@ def _identify_archive_type(filename):
         return 'zip'
 
     # two extensions
-    if len(parts) >= 3 and parts[-2] == 'tar':
-        return 'tar'
-
-    return 'unknown'
+    return 'tar' if len(parts) >= 3 and parts[-2] == 'tar' else 'unknown'
 
 
 def _check_components_sanity(path):
@@ -279,7 +296,7 @@ def extract_archive(archive, dst_dir):
         # unzip binary does not support '--strip-components=1',
         _strip_first_path_component(dst_dir)
     else:
-        raise ValidationError("Unsupported archive: {}".format(os.path.basename(archive)))
+        raise ValidationError(f"Unsupported archive: {os.path.basename(archive)}")
 
 
 class UrlSrcFetcher(SourceFetcher):
@@ -301,7 +318,7 @@ class UrlSrcFetcher(SourceFetcher):
         self.sha = src_info['sha1']
 
     def _get_filename(self, out_dir):
-        assert '://' in self.url, "Scheme separator not found in url {}".format(self.url)
+        assert '://' in self.url, f"Scheme separator not found in url {self.url}"
         return os.path.join(out_dir, os.path.basename(self.url.split('://', 2)[1]))
 
     def get_id(self):
@@ -312,19 +329,19 @@ class UrlSrcFetcher(SourceFetcher):
     def checkout_to(self, directory):
         # Download file to cache if it isn't already there
         if not os.path.exists(self.cache_filename):
-            print("Downloading source tarball {}".format(self.url))
+            print(f"Downloading source tarball {self.url}")
             download_atomic(self.cache_filename, self.url, self.working_directory)
 
         # Validate the sha1 of the source is given and matches the sha1
         file_sha = sha1(self.cache_filename)
 
         if self.sha != file_sha:
-            corrupt_filename = self.cache_filename + '.corrupt'
+            corrupt_filename = f'{self.cache_filename}.corrupt'
             os.replace(self.cache_filename, corrupt_filename)
             raise ValidationError(
-                "Provided sha1 didn't match sha1 of downloaded file, corrupt download saved as {}. "
-                "Provided: {}, Download file's sha1: {}, Url: {}".format(
-                    corrupt_filename, self.sha, file_sha, self.url))
+                f"Provided sha1 didn't match sha1 of downloaded file, corrupt download saved as {corrupt_filename}. Provided: {self.sha}, Download file's sha1: {file_sha}, Url: {self.url}"
+            )
+
 
         if self.extract:
             extract_archive(self.cache_filename, directory)

@@ -16,19 +16,19 @@ import sys
 
 
 if len(sys.argv) != 2 or sys.argv[1] not in ['region', 'zone']:
-    print("usage: {} <region|zone>".format(sys.argv[0]), file=sys.stderr)
+    print(f"usage: {sys.argv[0]} <region|zone>", file=sys.stderr)
     sys.exit(1)
 
 try:
     obj = json.load(sys.stdin)
 except Exception as exc:
-    print("Error parsing json input: {}".format(exc), file=sys.stderr)
+    print(f"Error parsing json input: {exc}", file=sys.stderr)
     sys.exit(1)
 
 try:
     name = obj['fault_domain'][sys.argv[1]]['name']
 except KeyError as exc:
-    print("Invalid fault domain json. Missing key: {}".format(exc), file=sys.stderr)
+    print(f"Invalid fault domain json. Missing key: {exc}", file=sys.stderr)
     sys.exit(1)
 
 print(name)

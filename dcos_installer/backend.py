@@ -28,7 +28,7 @@ log = logging.getLogger()
 
 def print_messages(messages):
     for key, error in messages.items():
-        log.error('{}: {}'.format(key, error))
+        log.error(f'{key}: {error}')
 
 
 def do_configure(config_path=CONFIG_PATH):
@@ -48,7 +48,7 @@ def do_configure(config_path=CONFIG_PATH):
     except ExhibitorTLSBootstrapError as e:
         log.error('Failed to bootstrap Exhibitor TLS')
         for i, error in enumerate(e.errors):
-            return log.error("{}: {}".format(i + 1, error))
+            return log.error(f"{i + 1}: {error}")
         return 1
     config_util.make_serve_dir(gen_out)
 
@@ -71,7 +71,7 @@ def generate_node_upgrade_script(installed_cluster_version, config_path=CONFIG_P
     except ExhibitorTLSBootstrapError as e:
         log.error('Failed to bootstrap Exhibitor TLS')
         for i, error in enumerate(e.errors):
-            return log.error("{}: {}".format(i + 1, error))
+            return log.error(f"{i + 1}: {error}")
         return 1
 
     config_util.make_serve_dir(gen_out)
@@ -101,10 +101,9 @@ region_to_endpoint = {
 
 
 def validate_aws_template_storage_region_name(aws_template_storage_region_name):
-    assert aws_template_storage_region_name in region_to_endpoint, \
-        "Unsupported AWS region {}. Only {} are supported".format(
-            aws_template_storage_region_name,
-            region_to_endpoint.keys())
+    assert (
+        aws_template_storage_region_name in region_to_endpoint
+    ), f"Unsupported AWS region {aws_template_storage_region_name}. Only {region_to_endpoint.keys()} are supported"
 
 
 def validate_aws_bucket_access(aws_template_storage_region_name,
@@ -125,9 +124,14 @@ def validate_aws_bucket_access(aws_template_storage_region_name,
         bucket.load()
     except botocore.exceptions.ClientError as ex:
         if ex.response['Error']['Code'] == '404':
-            raise AssertionError("s3 bucket {} does not exist".format(aws_template_storage_bucket)) from ex
-        raise AssertionError("Unable to access s3 bucket {} in region {}: {}".format(
-            aws_template_storage_bucket, aws_template_storage_region_name, ex)) from ex
+            raise AssertionError(
+                f"s3 bucket {aws_template_storage_bucket} does not exist"
+            ) from ex
+
+        raise AssertionError(
+            f"Unable to access s3 bucket {aws_template_storage_bucket} in region {aws_template_storage_region_name}: {ex}"
+        ) from ex
+
 
     # If autocreate is on, then skip ensuring the path exists
     if not aws_template_storage_bucket_path_autocreate:
@@ -136,11 +140,12 @@ def validate_aws_bucket_access(aws_template_storage_region_name,
         except botocore.exceptions.ClientError as ex:
             if ex.response['Error']['Code'] == '404':
                 raise AssertionError(
-                    "path `{}` in bucket `{}` does not exist. Create it or set "
-                    "aws_template_storage_bucket_path_autocreate to true".format(
-                        aws_template_storage_bucket_path, aws_template_storage_bucket))
-            raise AssertionError("Unable to access s3 path {} in bucket {}: {}".format(
-                aws_template_storage_bucket_path, aws_template_storage_bucket, ex)) from ex
+                    f"path `{aws_template_storage_bucket_path}` in bucket `{aws_template_storage_bucket}` does not exist. Create it or set aws_template_storage_bucket_path_autocreate to true"
+                )
+
+            raise AssertionError(
+                f"Unable to access s3 path {aws_template_storage_bucket_path} in bucket {aws_template_storage_bucket}: {ex}"
+            ) from ex
 
 
 def calculate_base_repository_url(
@@ -165,18 +170,16 @@ def calculate_aws_template_storage_region_name(
     try:
         location_info = session.client('s3').get_bucket_location(Bucket=aws_template_storage_bucket)
         loc = location_info["LocationConstraint"]
-        if loc is None or loc.strip() == "":
-            # If a buckets region is in fact 'us-east-1' the response from the api will actually be an empty value?!
-            # Rather than returning the empty value on to we set it to 'us-east-1'.
-            # See http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html#RESTBucketGETlocation-responses-response-elements  # noqa
-            return "us-east-1"
-        else:
-            return loc
+        return "us-east-1" if loc is None or loc.strip() == "" else loc
     except botocore.exceptions.ClientError as ex:
         if ex.response['Error']['Code'] == '404':
-            raise AssertionError("s3 bucket {} does not exist".format(aws_template_storage_bucket)) from ex
-        raise AssertionError("Unable to determine region location of s3 bucket {}: {}".format(
-            aws_template_storage_bucket, ex)) from ex
+            raise AssertionError(
+                f"s3 bucket {aws_template_storage_bucket} does not exist"
+            ) from ex
+
+        raise AssertionError(
+            f"Unable to determine region location of s3 bucket {aws_template_storage_bucket}: {ex}"
+        ) from ex
 
 
 aws_advanced_source = gen.internals.Source({
@@ -280,12 +283,7 @@ def do_aws_cf_configure():
     sources, targets, _ = gen.get_dcosconfig_source_target_and_templates(gen_config, [], extra_sources)
     targets.append(get_aws_advanced_target())
     resolver = gen.internals.resolve_configuration(sources, targets)
-    # TODO(cmaloney): kill this function and make the API return the structured
-    # results api as was always intended rather than the flattened / lossy other
-    # format. This will be an  API incompatible change. The messages format was
-    # specifically so that there wouldn't be this sort of API incompatibility.
-    messages = normalize_config_validation(resolver.status_dict)
-    if messages:
+    if messages := normalize_config_validation(resolver.status_dict):
         print_messages(messages)
         return 1
 
@@ -299,9 +297,9 @@ def do_aws_cf_configure():
 
     # Calculate the config ID and values that depend on it.
     config_id = gen.get_config_id(full_config)
-    reproducible_artifact_path = 'config_id/{}'.format(config_id)
-    cloudformation_s3_url = '{}/config_id/{}'.format(full_config['bootstrap_url'], config_id)
-    cloudformation_s3_url_full = '{}/cloudformation'.format(cloudformation_s3_url)
+    reproducible_artifact_path = f'config_id/{config_id}'
+    cloudformation_s3_url = f"{full_config['bootstrap_url']}/config_id/{config_id}"
+    cloudformation_s3_url_full = f'{cloudformation_s3_url}/cloudformation'
 
     # TODO(cmaloney): Switch to using the targets
     gen_config['bootstrap_url'] = full_config['bootstrap_url']
@@ -312,9 +310,9 @@ def do_aws_cf_configure():
 
     # Convert the bootstrap_Variant string we have back to a bootstrap_id as used internally by all
     # the tooling (never has empty string, uses None to say "no variant")
-    bootstrap_variant = full_config['bootstrap_variant'] if full_config['bootstrap_variant'] else None
+    bootstrap_variant = full_config['bootstrap_variant'] or None
 
-    artifacts = list()
+    artifacts = []
     for built_resource in list(gen.build_deploy.aws.do_create(
             tag='dcos_generate_config.sh --aws-cloudformation',
             build_name='Custom',
@@ -333,10 +331,13 @@ def do_aws_cf_configure():
 
     for package_id in json.loads(full_config['package_ids']):
         package_filename = release.make_package_filename(package_id)
-        artifacts.append({
-            'reproducible_path': package_filename,
-            'local_path': 'artifacts/' + package_filename,
-        })
+        artifacts.append(
+            {
+                'reproducible_path': package_filename,
+                'local_path': f'artifacts/{package_filename}',
+            }
+        )
+
 
     # Upload all the artifacts to the config-id path and then print out what
     # the path that should be used is, as well as saving a local json file for
@@ -344,18 +345,22 @@ def do_aws_cf_configure():
     repository = release.Repository(
         full_config['aws_template_storage_bucket_path'],
         None,
-        'config_id/' + config_id)
+        f'config_id/{config_id}',
+    )
+
 
     storage_commands = repository.make_commands({'core_artifacts': [], 'channel_artifacts': artifacts})
 
-    cf_dir = GENCONF_DIR + '/cloudformation'
-    log.warning("Writing local copies to {}".format(cf_dir))
+    cf_dir = f'{GENCONF_DIR}/cloudformation'
+    log.warning(f"Writing local copies to {cf_dir}")
     storage_provider = release.storage.local.LocalStorageProvider(cf_dir)
     release.apply_storage_commands({'local': storage_provider}, storage_commands)
 
     log.warning(
         "Generated templates locally available at %s",
-        cf_dir + "/" + reproducible_artifact_path)
+        f"{cf_dir}/{reproducible_artifact_path}",
+    )
+
     # TODO(cmaloney): Print where the user can find the files locally
 
     if full_config['aws_template_upload'] == 'false':
@@ -371,7 +376,10 @@ def do_aws_cf_configure():
 
     log.warning("Uploading to AWS")
     release.apply_storage_commands({'aws': storage_provider}, storage_commands)
-    log.warning("AWS CloudFormation templates now available at: {}".format(cloudformation_s3_url))
+    log.warning(
+        f"AWS CloudFormation templates now available at: {cloudformation_s3_url}"
+    )
+
 
     # TODO(cmaloney): Print where the user can find the files in AWS
     # TODO(cmaloney): Dump out a JSON with machine paths to make scripting easier.
@@ -405,13 +413,9 @@ def determine_config_type(config_path=CONFIG_PATH):
 
         # None indicates any value means this is advanced config.
         # A string indicates the value must match.
-        if value is None:
-            log.error('Advanced configuration found in config.yaml: {}: value'.format(key, value))
+        if value is None or value != config[key]:
+            log.error(f'Advanced configuration found in config.yaml: {key}: value')
             adv_found[key] = config[key]
-        elif value != config[key]:
-            log.error('Advanced configuration found in config.yaml: {}: value'.format(key, config[key]))
-            adv_found[key] = config[key]
-
     if adv_found:
         message = (
             "Advanced configuration detected in {config_path} ({adv_found}).\nPlease backup "
@@ -448,7 +452,7 @@ def success(config: Config):
     if not master_ips or not agent_ips:
         code = 400
         return msgs, code
-    msgs['success'] = 'http://{}'.format(master_ips[0])
+    msgs['success'] = f'http://{master_ips[0]}'
     msgs['master_count'] = len(master_ips)
     msgs['agent_count'] = len(agent_ips)
     return msgs, code

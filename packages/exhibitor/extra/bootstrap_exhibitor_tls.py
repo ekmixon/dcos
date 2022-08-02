@@ -20,14 +20,13 @@ def invoke_detect_ip():
         ip = subprocess.check_output(
             ['/opt/mesosphere/bin/detect_ip']).strip().decode('utf-8')
     except subprocess.CalledProcessError as e:
-        print("check_output exited with {}".format(e))
+        print(f"check_output exited with {e}")
         sys.exit(1)
     try:
         socket.inet_aton(ip)
         return ip
     except socket.error as e:
-        print(
-            "inet_aton exited with {}. {} is not a valid IPv4 address".format(e, ip))
+        print(f"inet_aton exited with {e}. {ip} is not a valid IPv4 address")
         sys.exit(1)
 
 
@@ -41,11 +40,11 @@ def get_ca_url(exhibitor_bootstrap_ca_url, bootstrap_url):
 
         if result.scheme == 'http':
             netloc = result.netloc.split(':', 1)  # strip port
-            return 'https://{}:443'.format(netloc[0])
+            return f'https://{netloc[0]}:443'
         elif result.scheme == 'file':
             print('bootstrap url references a local file')
         else:
-            print('bootstrap url is using an unsupported scheme: {}'.format(result.scheme))
+            print(f'bootstrap url is using an unsupported scheme: {result.scheme}')
         return ""
 
 
@@ -53,18 +52,14 @@ def test_connection(ca_url):
     s = socket.socket()
     s.settimeout(5)
     netloc = urlparse(ca_url).netloc.split(':', 1)
-    if len(netloc) == 2:
-        host, port = netloc
-    else:
-        host, port = netloc[0], '443'
-
-    print('testing connection to {}:{}'.format(host, port))
+    host, port = netloc if len(netloc) == 2 else (netloc[0], '443')
+    print(f'testing connection to {host}:{port}')
     try:
         s.connect((host, int(port)))
-        print('connection to {}:{} successful'.format(host, port))
+        print(f'connection to {host}:{port} successful')
         return True
     except Exception as e:
-        print('could not connect to DC/OS bootstrap CA: {}'.format(e))
+        print(f'could not connect to DC/OS bootstrap CA: {e}')
         return False
     finally:
         s.close()
@@ -81,16 +76,16 @@ def gen_tls_artifacts(ca_url, artifacts_path):
     psk_path = Path(PRESHAREDKEY_LOCATION)
     if psk_path.exists():
         psk = psk_path.read_text(encoding='ascii').strip()
-        print('Using preshared key from location `{}`'.format(str(psk_path)))
+        print(f'Using preshared key from location `{str(psk_path)}`')
     else:
-        print('No preshared key found at location `{}`'.format(str(psk_path)))
+        print(f'No preshared key found at location `{str(psk_path)}`')
         # Empty PSK results in any CSR being signed by the CA service.
         psk = ''
 
     server_entity = 'server'
     client_entity = 'client'
 
-    print('Initiating {} end entity.'.format(server_entity))
+    print(f'Initiating {server_entity} end entity.')
     output = subprocess.check_output(
         args=[
             BOOTSTRAP_CA_BINARY,
@@ -101,7 +96,7 @@ def gen_tls_artifacts(ca_url, artifacts_path):
     )
     print(output.decode())
 
-    print('Initiating {} end entity.'.format(client_entity))
+    print(f'Initiating {client_entity} end entity.')
     output = subprocess.check_output(
         args=[
             BOOTSTRAP_CA_BINARY,
@@ -112,46 +107,69 @@ def gen_tls_artifacts(ca_url, artifacts_path):
     )
     print(output.decode())
 
-    print('Making CSR for {} with IP `{}`'.format(server_entity, ip))
+    print(f'Making CSR for {server_entity} with IP `{ip}`')
     output = subprocess.check_output(
         args=[
-            BOOTSTRAP_CA_BINARY, 'csr', server_entity,
-            '--output-dir', EXHIBITOR_TLS_TMP_DIR,
-            '--url', ca_url,
-            '--ca', CSR_SERVICE_CERT_PATH,
-            '--psk', psk,
-            '--sans', '{},localhost,127.0.0.1,exhibitor'.format(ip),
+            BOOTSTRAP_CA_BINARY,
+            'csr',
+            server_entity,
+            '--output-dir',
+            EXHIBITOR_TLS_TMP_DIR,
+            '--url',
+            ca_url,
+            '--ca',
+            CSR_SERVICE_CERT_PATH,
+            '--psk',
+            psk,
+            '--sans',
+            f'{ip},localhost,127.0.0.1,exhibitor',
         ],
         stderr=subprocess.STDOUT,
     )
+
     print(output.decode())
 
-    print('Making CSR for {} with IP `{}`'.format(client_entity, ip))
+    print(f'Making CSR for {client_entity} with IP `{ip}`')
     output = subprocess.check_output(
         args=[
-            BOOTSTRAP_CA_BINARY, 'csr', client_entity,
-            '--output-dir', EXHIBITOR_TLS_TMP_DIR,
-            '--url', ca_url,
-            '--ca', CSR_SERVICE_CERT_PATH,
-            '--psk', psk,
-            '--sans', '{},localhost,127.0.0.1,exhibitor'.format(ip),
+            BOOTSTRAP_CA_BINARY,
+            'csr',
+            client_entity,
+            '--output-dir',
+            EXHIBITOR_TLS_TMP_DIR,
+            '--url',
+            ca_url,
+            '--ca',
+            CSR_SERVICE_CERT_PATH,
+            '--psk',
+            psk,
+            '--sans',
+            f'{ip},localhost,127.0.0.1,exhibitor',
         ],
         stderr=subprocess.STDOUT,
     )
+
     print(output.decode())
 
-    print('Writing TLS artifacts to {}'.format(artifacts_path))
+    print(f'Writing TLS artifacts to {artifacts_path}')
     output = subprocess.check_output(
         args=[
-            BOOTSTRAP_CA_BINARY, 'create-exhibitor-artifacts',
-            '--output-dir', EXHIBITOR_TLS_TMP_DIR,
-            '--ca', CSR_SERVICE_CERT_PATH,
-            '--client-entity', client_entity,
-            '--server-entity', server_entity,
-            '--artifacts-directory', '{}'.format(artifacts_path),
+            BOOTSTRAP_CA_BINARY,
+            'create-exhibitor-artifacts',
+            '--output-dir',
+            EXHIBITOR_TLS_TMP_DIR,
+            '--ca',
+            CSR_SERVICE_CERT_PATH,
+            '--client-entity',
+            client_entity,
+            '--server-entity',
+            server_entity,
+            '--artifacts-directory',
+            f'{artifacts_path}',
         ],
         stderr=subprocess.STDOUT,
     )
+
     print(output.decode())
 
 
@@ -201,8 +219,9 @@ def main():
         # Clean up any partially written artifacts
         _remove_artifact_dir()
         _fail_and_calculate_status(
-            'error generating artifacts code: {} stdout: {} stderr: {}'.format(
-                cpe.returncode, cpe.stdout, cpe.stderr))
+            f'error generating artifacts code: {cpe.returncode} stdout: {cpe.stdout} stderr: {cpe.stderr}'
+        )
+
     # remove file from temporary location
     Path(CSR_SERVICE_CERT_PATH).unlink()
 

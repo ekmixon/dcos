@@ -26,7 +26,7 @@ ZK_LOCK_PATH = "/etcd/locking"
 # The path of the ZNode containing the list of cluster members.
 ZK_NODES_PATH = "/etcd/nodes"
 # The id to use when contending for the ZK lock.
-LOCK_CONTENDER_ID = "{}:{}".format(socket.gethostname(), os.getpid())
+LOCK_CONTENDER_ID = f"{socket.gethostname()}:{os.getpid()}"
 # The time in seconds to wait when attempting to acquire a lock.  Lock
 # acquisition between 5 ZooKeeper nodes is an operation on the order of
 # milliseconds.
@@ -104,7 +104,7 @@ def zk_connect(zk_addr: str,
     if zk_user and zk_secret:
         default_acl = [make_digest_acl(zk_user, zk_secret, all=True)]
         scheme = 'digest'
-        credential = "{}:{}".format(zk_user, zk_secret)
+        credential = f"{zk_user}:{zk_secret}"
         auth_data = [(scheme, credential)]
 
     zk = KazooClient(
@@ -520,12 +520,10 @@ class EtcdctlHelper:
         Lazily finds out the designated node to use
         """
         if self._designated_node is None:
-            # Choose one node from the list
-            healthy_nodes = list(filter(self._is_node_healthy, self._nodes))
-            # In order to not to always hit the same node, we randomize the choice:
-            if len(healthy_nodes) == 0:
+            if healthy_nodes := list(filter(self._is_node_healthy, self._nodes)):
+                self._designated_node = random.choice(healthy_nodes)
+            else:
                 raise Exception("there are no healthy nodes")
-            self._designated_node = random.choice(healthy_nodes)
         return self._designated_node
 
     def get_members(self) -> JsonTypeMembers:
@@ -552,9 +550,7 @@ class EtcdctlHelper:
         )
         result.check_returncode()
         output = json.loads(result.stdout)
-        members = output["members"]  # type: JsonTypeMembers
-
-        return members
+        return output["members"]
 
     def get_node_id(self, node_ip: str) -> str:
         """ Returns etcd member ID in Hex
@@ -562,8 +558,7 @@ class EtcdctlHelper:
         members_info = self.get_members()
         for member in members_info:
             # Uninitialized members do not have "name" entry
-            if "name" in member and member["name"] == "etcd-{}".format(
-                    node_ip):
+            if "name" in member and member["name"] == f"etcd-{node_ip}":
                 assert isinstance(member["ID"], int)
                 # valid member ID should be in Hex, as etcdctl will try to
                 # parse the string of member ID to Hex when used
@@ -574,8 +569,7 @@ class EtcdctlHelper:
     def ensure_member(self, node_ip: str) -> None:
         members_info = self.get_members()
         for member in members_info:
-            if "name" in member and member["name"] == "etcd-{}".format(
-                    node_ip):
+            if "name" in member and member["name"] == f"etcd-{node_ip}":
                 log.info("node %s is already member of the ensemble", node_ip)
                 return
 
@@ -587,10 +581,11 @@ class EtcdctlHelper:
             [
                 "member",
                 "add",
-                "etcd-{}".format(node_ip),
-                "--peer-urls=https://{}:2380".format(node_ip),
+                f"etcd-{node_ip}",
+                f"--peer-urls=https://{node_ip}:2380",
             ],
         )
+
         result.check_returncode()
         log.info("node %s was added to the ensemble", node_ip)
 
@@ -712,16 +707,17 @@ class EtcdctlHelper:
 
     def _is_node_healthy(self, node: str) -> bool:
         result = self._execute_etcdctl(node, ["endpoint", "health"])
-        healthy = result.returncode == 0
-        return healthy
+        return result.returncode == 0
 
     def _execute_etcdctl(self, endpoint_ip: str,
                          args: List[str]) -> subprocess.CompletedProcess:
 
         cmd = [
-            self._etcdctl_path, "--endpoints",
-            "{}://{}:2379".format(self.scheme, endpoint_ip)
+            self._etcdctl_path,
+            "--endpoints",
+            f"{self.scheme}://{endpoint_ip}:2379",
         ]
+
 
         if self.scheme == "https":
             cmd.extend([

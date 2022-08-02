@@ -22,8 +22,10 @@ expected_dcos_builder_files = [
 ]
 dcos_builder_files = [f.relative_to(Path("./pkgpanda")) for f in Path("./pkgpanda").glob('docker/**/*') if f.is_file()]
 if set(expected_dcos_builder_files) != set(dcos_builder_files):
-    raise Exception('Expected ./pkgpanda/docker/dcos-builder to contain {} but it had {}'.format(
-        expected_dcos_builder_files, dcos_builder_files))
+    raise Exception(
+        f'Expected ./pkgpanda/docker/dcos-builder to contain {expected_dcos_builder_files} but it had {dcos_builder_files}'
+    )
+
 
 
 setup(

@@ -30,11 +30,11 @@ def exception_response(message, exc):
 
 
 def invalid_package_id_response(package_id):
-    return error_response("Invalid package ID: {}".format(package_id))
+    return error_response(f"Invalid package ID: {package_id}")
 
 
 def package_not_found_response(package_id):
-    return error_response('Package {} not found.'.format(package_id))
+    return error_response(f'Package {package_id} not found.')
 
 
 def package_response(package_id, repository):
@@ -51,7 +51,7 @@ def package_response(package_id, repository):
             http.client.NOT_FOUND,
         )
     except PackageError:
-        error_message = 'Unable to load package {}.'.format(package_id)
+        error_message = f'Unable to load package {package_id}.'
         logging.exception(error_message)
         response = (
             error_response(error_message),
@@ -189,9 +189,10 @@ def get_active_package(package_id):
 
     if package_id not in current_app.install.get_active():
         return (
-            error_response('Package {} is not active.'.format(package_id)),
+            error_response(f'Package {package_id} is not active.'),
             http.client.NOT_FOUND,
         )
+
 
     return response
 
@@ -206,8 +207,9 @@ def activate_packages():
             http.client.BAD_REQUEST,
         )
 
-    missing_packages = set(request.json) - set(current_app.repository.list())
-    if missing_packages:
+    if missing_packages := set(request.json) - set(
+        current_app.repository.list()
+    ):
         return (
             error_response(
                 'Not all packages in the request are present on this node.',

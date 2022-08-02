@@ -33,18 +33,20 @@ def test_dcos_diagnostics_health(dcos_api_session: DcosApiSession) -> None:
     # Check all masters dcos-diagnostics instances on base port since this is extra-cluster request (outside localhost)
     for host in dcos_api_session.masters:
         response = check_json(dcos_api_session.health.get('/', node=host))
-        assert len(response) == len(required_fields), 'response must have the following fields: {}'.format(
-            ', '.join(required_fields)
-        )
+        assert len(response) == len(
+            required_fields
+        ), f"response must have the following fields: {', '.join(required_fields)}"
+
 
         # validate units
         assert 'units' in response, 'units field not found'
         assert isinstance(response['units'], list), 'units field must be a list'
         assert len(response['units']) > 0, 'units field cannot be empty'
         for unit in response['units']:
-            assert len(unit) == len(required_fields_unit), 'unit must have the following fields: {}'.format(
-                ', '.join(required_fields_unit)
-            )
+            assert len(unit) == len(
+                required_fields_unit
+            ), f"unit must have the following fields: {', '.join(required_fields_unit)}"
+
             for required_field_unit in required_fields_unit:
                 assert required_field_unit in unit, '{} must be in a unit repsonse'
 
@@ -55,24 +57,26 @@ def test_dcos_diagnostics_health(dcos_api_session: DcosApiSession) -> None:
 
         # check all required fields but units
         for required_field in required_fields[1:]:
-            assert required_field in response, '{} field not found'.format(required_field)
-            assert response[required_field], '{} cannot be empty'.format(required_field)
+            assert required_field in response, f'{required_field} field not found'
+            assert response[required_field], f'{required_field} cannot be empty'
 
     # Check all agents running dcos-diagnostics behind agent-adminrouter on 61001
     for host in dcos_api_session.slaves:
         response = check_json(dcos_api_session.health.get('/', node=host))
-        assert len(response) == len(required_fields), 'response must have the following fields: {}'.format(
-            ', '.join(required_fields)
-        )
+        assert len(response) == len(
+            required_fields
+        ), f"response must have the following fields: {', '.join(required_fields)}"
+
 
         # validate units
         assert 'units' in response, 'units field not found'
         assert isinstance(response['units'], list), 'units field must be a list'
         assert len(response['units']) > 0, 'units field cannot be empty'
         for unit in response['units']:
-            assert len(unit) == len(required_fields_unit), 'unit must have the following fields: {}'.format(
-                ', '.join(required_fields_unit)
-            )
+            assert len(unit) == len(
+                required_fields_unit
+            ), f"unit must have the following fields: {', '.join(required_fields_unit)}"
+
             for required_field_unit in required_fields_unit:
                 assert required_field_unit in unit, '{} must be in a unit repsonse'
 
@@ -83,8 +87,8 @@ def test_dcos_diagnostics_health(dcos_api_session: DcosApiSession) -> None:
 
         # check all required fields but units
         for required_field in required_fields[1:]:
-            assert required_field in response, '{} field not found'.format(required_field)
-            assert response[required_field], '{} cannot be empty'.format(required_field)
+            assert required_field in response, f'{required_field} field not found'
+            assert response[required_field], f'{required_field} cannot be empty'
 
 
 @retrying.retry(wait_fixed=2000, stop_max_delay=LATENCY * 1000)
@@ -97,9 +101,10 @@ def test_dcos_diagnostics_nodes(dcos_api_session: DcosApiSession) -> None:
         assert len(response) == 1, 'nodes response must have only one field: nodes'
         assert 'nodes' in response
         assert isinstance(response['nodes'], list)
-        assert len(response['nodes']) == len(dcos_api_session.masters + dcos_api_session.all_slaves), \
-            ('a number of nodes in response must be {}'.
-             format(len(dcos_api_session.masters + dcos_api_session.all_slaves)))
+        assert len(response['nodes']) == len(
+            dcos_api_session.masters + dcos_api_session.all_slaves
+        ), f'a number of nodes in response must be {len(dcos_api_session.masters + dcos_api_session.all_slaves)}'
+
 
         # test nodes
         validate_node(response['nodes'])
@@ -115,7 +120,10 @@ def test_dcos_diagnostics_nodes_node(dcos_api_session: DcosApiSession) -> None:
         nodes = list(map(lambda node: node['host_ip'], response['nodes']))  # type: ignore
 
         for node in nodes:
-            node_response = check_json(dcos_api_session.health.get('/nodes/{}'.format(node), node=master))
+            node_response = check_json(
+                dcos_api_session.health.get(f'/nodes/{node}', node=master)
+            )
+
             validate_node([node_response])
 
 
@@ -129,7 +137,12 @@ def test_dcos_diagnostics_nodes_node_units(dcos_api_session: DcosApiSession) -> 
         nodes = list(map(lambda node: node['host_ip'], response['nodes']))  # type: ignore
 
         for node in nodes:
-            units_response = check_json(dcos_api_session.health.get('/nodes/{}/units'.format(node), node=master))
+            units_response = check_json(
+                dcos_api_session.health.get(
+                    f'/nodes/{node}/units', node=master
+                )
+            )
+
 
             assert len(units_response) == 1, 'unit response should have only 1 field `units`'
             assert 'units' in units_response
@@ -144,12 +157,22 @@ def test_dcos_diagnostics_nodes_node_units_unit(dcos_api_session: DcosApiSession
         response = check_json(dcos_api_session.health.get('/nodes', node=master))
         nodes = list(map(lambda node: node['host_ip'], response['nodes']))  # type: ignore
         for node in nodes:
-            units_response = check_json(dcos_api_session.health.get('/nodes/{}/units'.format(node), node=master))
+            units_response = check_json(
+                dcos_api_session.health.get(
+                    f'/nodes/{node}/units', node=master
+                )
+            )
+
             unit_ids = list(map(lambda unit: unit['id'], units_response['units']))  # type: ignore
 
             for unit_id in unit_ids:
                 validate_unit(
-                    check_json(dcos_api_session.health.get('/nodes/{}/units/{}'.format(node, unit_id), node=master)))
+                    check_json(
+                        dcos_api_session.health.get(
+                            f'/nodes/{node}/units/{unit_id}', node=master
+                        )
+                    )
+                )
 
 
 @retrying.retry(wait_fixed=2000, stop_max_delay=LATENCY * 1000)
@@ -175,10 +198,11 @@ def test_dcos_diagnostics_units(dcos_api_session: DcosApiSession) -> None:
         validate_units(units_response['units'])
 
         pulled_units = list(map(lambda unit: unit['id'], units_response['units']))  # type: ignore
-        logging.info('collected units: {}'.format(pulled_units))
+        logging.info(f'collected units: {pulled_units}')
         diff = set(pulled_units).symmetric_difference(all_units)
-        assert set(pulled_units) == all_units, ('not all units have been collected by dcos-diagnostics '
-                                                'puller, missing: {}'.format(diff))
+        assert (
+            set(pulled_units) == all_units
+        ), f'not all units have been collected by dcos-diagnostics puller, missing: {diff}'
 
 
 @retrying.retry(wait_fixed=2000, stop_max_delay=LATENCY * 1000)
@@ -192,21 +216,33 @@ def test_systemd_units_health(dcos_api_session: DcosApiSession) -> None:
     report_response = check_json(dcos_api_session.health.get('/report', node=dcos_api_session.masters[0]))
     assert 'Units' in report_response, "Missing `Units` field in response"
     for unit_name, unit_props in report_response['Units'].items():
-        assert 'Health' in unit_props, "Unit {} missing `Health` field".format(unit_name)
+        assert 'Health' in unit_props, f"Unit {unit_name} missing `Health` field"
         if unit_props['Health'] != 0:
-            assert 'Nodes' in unit_props, "Unit {} missing `Nodes` field".format(unit_name)
+            assert 'Nodes' in unit_props, f"Unit {unit_name} missing `Nodes` field"
             assert isinstance(unit_props['Nodes'], list), 'Field `Node` must be a list'
             for node in unit_props['Nodes']:
-                assert 'Health' in node, 'Field `Health` is expected to be in nodes properties, got {}'.format(node)
+                assert (
+                    'Health' in node
+                ), f'Field `Health` is expected to be in nodes properties, got {node}'
+
                 if node['Health'] != 0:
-                    assert 'Output' in node, 'Field `Output` is expected to be in nodes properties, got {}'.format(node)
+                    assert (
+                        'Output' in node
+                    ), f'Field `Output` is expected to be in nodes properties, got {node}'
+
                     assert isinstance(node['Output'], dict), 'Field `Output` must be a dict'
-                    assert unit_name in node['Output'], 'unit {} must be in node Output, got {}'.format(unit_name,
-                                                                                                        node['Output'])
-                    assert 'IP' in node, 'Field `IP` is expected to be in nodes properties, got {}'.format(node)
+                    assert (
+                        unit_name in node['Output']
+                    ), f"unit {unit_name} must be in node Output, got {node['Output']}"
+
+                    assert (
+                        'IP' in node
+                    ), f'Field `IP` is expected to be in nodes properties, got {node}'
+
                     unhealthy_output.append(
-                        'Unhealthy unit {} has been found on node {}, health status {}. journalctl output {}'.format(
-                            unit_name, node['IP'], unit_props['Health'], node['Output'][unit_name]))
+                        f"Unhealthy unit {unit_name} has been found on node {node['IP']}, health status {unit_props['Health']}. journalctl output {node['Output'][unit_name]}"
+                    )
+
 
     if unhealthy_output:
         raise AssertionError('\n'.join(unhealthy_output))
@@ -220,7 +256,10 @@ def test_dcos_diagnostics_units_unit(dcos_api_session: DcosApiSession) -> None:
         units_response = check_json(dcos_api_session.health.get('/units', node=master))
         pulled_units = list(map(lambda unit: unit['id'], units_response['units']))  # type: ignore
         for unit in pulled_units:
-            unit_response = check_json(dcos_api_session.health.get('/units/{}'.format(unit), node=master))
+            unit_response = check_json(
+                dcos_api_session.health.get(f'/units/{unit}', node=master)
+            )
+
             validate_units([unit_response])
 
 
@@ -260,7 +299,7 @@ def test_dcos_diagnostics_units_unit_nodes(dcos_api_session: DcosApiSession) -> 
             set(master_nodes).symmetric_difference(set(dcos_api_session.masters))
         )
 
-        agent_nodes = list()
+        agent_nodes = []
         if 'dcos-mesos-slave.service' in pulled_units:
             agent_nodes_response = check_json(
                 dcos_api_session.health.get('/units/dcos-mesos-slave.service/nodes', node=master))
@@ -279,17 +318,31 @@ def test_dcos_diagnostics_units_unit_nodes_node(dcos_api_session: DcosApiSession
         units_response = check_json(dcos_api_session.health.get('/units', node=master))
         pulled_units = list(map(lambda unit: unit['id'], units_response['units']))  # type: ignore
         for unit in pulled_units:
-            nodes_response = check_json(dcos_api_session.health.get('/units/{}/nodes'.format(unit), node=master))
+            nodes_response = check_json(
+                dcos_api_session.health.get(
+                    f'/units/{unit}/nodes', node=master
+                )
+            )
+
             pulled_nodes = list(map(lambda node: node['host_ip'], nodes_response['nodes']))  # type: ignore
-            logging.info('pulled nodes: {}'.format(pulled_nodes))
+            logging.info(f'pulled nodes: {pulled_nodes}')
             for node in pulled_nodes:
                 node_response = check_json(
-                    dcos_api_session.health.get('/units/{}/nodes/{}'.format(unit, node), node=master))
-                assert len(node_response) == len(required_node_fields), 'required fields: {}'.format(
-                    ', '.join(required_node_fields))
+                    dcos_api_session.health.get(
+                        f'/units/{unit}/nodes/{node}', node=master
+                    )
+                )
+
+                assert len(node_response) == len(
+                    required_node_fields
+                ), f"required fields: {', '.join(required_node_fields)}"
+
 
                 for required_node_field in required_node_fields:
-                    assert required_node_field in node_response, 'field {} must be set'.format(required_node_field)
+                    assert (
+                        required_node_field in node_response
+                    ), f'field {required_node_field} must be set'
+
 
                 # host_ip, health, role, help cannot be empty
                 assert node_response['host_ip'], 'host_ip field cannot be empty'
@@ -352,7 +405,9 @@ def _check_diagnostics_bundle_status(dcos_api_session: DcosApiSession) -> None:
 
     for _, properties in diagnostics_bundle_status.items():
         for required_status_field in required_status_fields:
-            assert required_status_field in properties, 'property {} not found'.format(required_status_field)
+            assert (
+                required_status_field in properties
+            ), f'property {required_status_field} not found'
 
 
 def _create_bundle(diagnostics: Diagnostics) -> str:
@@ -377,12 +432,12 @@ def _create_bundle(diagnostics: Diagnostics) -> str:
 
 def _delete_bundle(diagnostics: Diagnostics, bundle: str) -> None:
     bundles = diagnostics.get_diagnostics_reports()
-    assert bundle in bundles, 'not found {} in {}'.format(bundle, bundles)
+    assert bundle in bundles, f'not found {bundle} in {bundles}'
 
     diagnostics.delete_bundle(bundle)
 
     bundles = diagnostics.get_diagnostics_reports()
-    assert bundle not in bundles, 'found {} in {}'.format(bundle, bundles)
+    assert bundle not in bundles, f'found {bundle} in {bundles}'
 
 
 def _download_and_extract_bundle(dcos_api_session: DcosApiSession, bundle: str, diagnostics: Diagnostics) -> None:
@@ -478,11 +533,7 @@ def _download_bundle_from_master(dcos_api_session: DcosApiSession, master_index:
         # raises KeyError if item is not in zipfile.
         item_content = z.read(item).decode()
 
-        if to_json:
-            # raises ValueError if cannot deserialize item_content.
-            return json.loads(item_content)
-
-        return item_content
+        return json.loads(item_content) if to_json else item_content
 
     def _get_dcos_diagnostics_health(z: zipfile.ZipFile, item: str) -> Any:
         # try to load dcos-diagnostics health report and validate the report is for this host
@@ -528,48 +579,60 @@ def _download_bundle_from_master(dcos_api_session: DcosApiSession, master_index:
 
         # make sure all required log files for master node are in place.
         for master_ip in dcos_api_session.masters:
-            master_folder = master_ip + '_master/'
+            master_folder = f'{master_ip}_master/'
 
             # try to load dcos-diagnostics health report and validate the report is for this host
-            health_report = _get_dcos_diagnostics_health(z, master_folder + 'dcos-diagnostics-health.json')
+            health_report = _get_dcos_diagnostics_health(
+                z, f'{master_folder}dcos-diagnostics-health.json'
+            )
+
             assert 'ip' in health_report
             assert health_report['ip'] == master_ip
 
             # make sure systemd unit output is correct and does not contain error message
-            unit_output = get_file_content(master_folder + 'dcos-mesos-master.service', z)
+            unit_output = get_file_content(f'{master_folder}dcos-mesos-master.service', z)
             verify_unit_response(unit_output, 100)
 
             verify_archived_items(master_folder, archived_items, expected_master_files)
 
-            state_output = get_file_content(master_folder + '5050-master_state.json', z)
+            state_output = get_file_content(f'{master_folder}5050-master_state.json', z)
             validate_state(state_output)
 
         # make sure all required log files for agent node are in place.
         for slave_ip in dcos_api_session.slaves:
-            agent_folder = slave_ip + '_agent/'
+            agent_folder = f'{slave_ip}_agent/'
 
             # try to load dcos-diagnostics health report and validate the report is for this host
-            health_report = _get_dcos_diagnostics_health(z, agent_folder + 'dcos-diagnostics-health.json')
+            health_report = _get_dcos_diagnostics_health(
+                z, f'{agent_folder}dcos-diagnostics-health.json'
+            )
+
             assert 'ip' in health_report
             assert health_report['ip'] == slave_ip
 
             # make sure systemd unit output is correct and does not contain error message
-            unit_output = get_file_content(agent_folder + 'dcos-mesos-slave.service', z)
+            unit_output = get_file_content(f'{agent_folder}dcos-mesos-slave.service', z)
             verify_unit_response(unit_output, 100)
 
             verify_archived_items(agent_folder, archived_items, expected_agent_files)
 
         # make sure all required log files for public agent node are in place.
         for public_slave_ip in dcos_api_session.public_slaves:
-            agent_public_folder = public_slave_ip + '_agent_public/'
+            agent_public_folder = f'{public_slave_ip}_agent_public/'
 
             # try to load dcos-diagnostics health report and validate the report is for this host
-            health_report = _get_dcos_diagnostics_health(z, agent_public_folder + 'dcos-diagnostics-health.json')
+            health_report = _get_dcos_diagnostics_health(
+                z, f'{agent_public_folder}dcos-diagnostics-health.json'
+            )
+
             assert 'ip' in health_report
             assert health_report['ip'] == public_slave_ip
 
             # make sure systemd unit output is correct and does not contain error message
-            unit_output = get_file_content(agent_public_folder + 'dcos-mesos-slave-public.service', z)
+            unit_output = get_file_content(
+                f'{agent_public_folder}dcos-mesos-slave-public.service', z
+            )
+
             verify_unit_response(unit_output, 100)
 
             verify_archived_items(agent_public_folder, archived_items, expected_public_agent_files)
@@ -579,11 +642,13 @@ def get_file_content(unzipped_file: str, z: zipfile.ZipFile) -> bytes:
     archived_items = z.namelist()
     if unzipped_file in archived_items:
         return z.open(unzipped_file).read()
-    expected_gzipped_file = (unzipped_file + '.gz')
+    expected_gzipped_file = f'{unzipped_file}.gz'
     if expected_gzipped_file in archived_items:
         gzipped_state_output = z.open(expected_gzipped_file)
         return gzip.decompress(gzipped_state_output.read())
-    raise AssertionError("Not found {} nor {} in {}".format(unzipped_file, expected_gzipped_file, archived_items))
+    raise AssertionError(
+        f"Not found {unzipped_file} nor {expected_gzipped_file} in {archived_items}"
+    )
 
 
 def make_nodes_ip_map(dcos_api_session: DcosApiSession) -> dict:
@@ -604,14 +669,19 @@ def make_nodes_ip_map(dcos_api_session: DcosApiSession) -> dict:
 
 def validate_node(nodes: list) -> None:
     assert isinstance(nodes, list), 'input argument must be a list'
-    assert len(nodes) > 0, 'input argument cannot be empty'
+    assert nodes, 'input argument cannot be empty'
     required_fields = ['host_ip', 'health', 'role']
 
     for node in nodes:
-        assert len(node) == len(required_fields), 'node should have the following fields: {}. Actual: {}'.format(
-            ', '.join(required_fields), node)
+        assert len(node) == len(
+            required_fields
+        ), f"node should have the following fields: {', '.join(required_fields)}. Actual: {node}"
+
         for required_field in required_fields:
-            assert required_field in node, '{} must be in node. Actual: {}'.format(required_field, node)
+            assert (
+                required_field in node
+            ), f'{required_field} must be in node. Actual: {node}'
+
 
         # host_ip, health, role fields cannot be empty
         assert node['health'] in [0, 1], 'health must be 0 or 1'
@@ -621,34 +691,44 @@ def validate_node(nodes: list) -> None:
 
 def validate_units(units: list) -> None:
     assert isinstance(units, list), 'input argument must be list'
-    assert len(units) > 0, 'input argument cannot be empty'
+    assert units, 'input argument cannot be empty'
     required_fields = ['id', 'name', 'health', 'description']
 
     for unit in units:
-        assert len(unit) == len(required_fields), 'a unit must have the following fields: {}. Actual: {}'.format(
-            ', '.join(required_fields), unit)
+        assert len(unit) == len(
+            required_fields
+        ), f"a unit must have the following fields: {', '.join(required_fields)}. Actual: {unit}"
+
         for required_field in required_fields:
-            assert required_field in unit, 'unit response must have field: {}. Actual: {}'.format(required_field, unit)
+            assert (
+                required_field in unit
+            ), f'unit response must have field: {required_field}. Actual: {unit}'
+
 
         # a unit must have all 3 fields not empty
         assert unit['id'], 'id field cannot be empty'
-        assert unit['name'], 'name field cannot be empty in {}'.format(unit)
+        assert unit['name'], f'name field cannot be empty in {unit}'
         assert unit['health'] in [0, 1], 'health must be 0 or 1'
-        assert unit['description'], 'description field cannot be empty in {}'.format(unit)
+        assert unit['description'], f'description field cannot be empty in {unit}'
 
 
 def validate_unit(unit: dict) -> None:
     assert isinstance(unit, dict), 'input argument must be a dict'
 
     required_fields = ['id', 'health', 'output', 'description', 'help', 'name']
-    assert len(unit) == len(required_fields), 'unit must have the following fields: {}. Actual: {}'.format(
-        ', '.join(required_fields), unit)
+    assert len(unit) == len(
+        required_fields
+    ), f"unit must have the following fields: {', '.join(required_fields)}. Actual: {unit}"
+
     for required_field in required_fields:
-        assert required_field in unit, '{} must be in a unit. Actual: {}'.format(required_field, unit)
+        assert (
+            required_field in unit
+        ), f'{required_field} must be in a unit. Actual: {unit}'
+
 
     # id, name, health, description, help should not be empty
     assert unit['id'], 'id field cannot be empty'
-    assert unit['name'], 'name field cannot be empty in {}'.format(unit)
+    assert unit['name'], f'name field cannot be empty in {unit}'
     assert unit['health'] in [0, 1], 'health must be 0 or 1'
     assert unit['description'], 'description field cannot be empty'
     assert unit['help'], 'help field cannot be empty'
@@ -658,7 +738,7 @@ def validate_state(state_output: Any) -> None:
     state = json.loads(state_output)
     assert len(state["frameworks"]) > 1, "bundle must contain information about frameworks"
 
-    task_count = sum([len(f["tasks"]) for f in state["frameworks"]])
+    task_count = sum(len(f["tasks"]) for f in state["frameworks"])
     assert task_count > 0, "bundle must contains information about tasks"
 
 
@@ -674,14 +754,16 @@ def verify_archived_items(folder: str, archived_items: list, expected_files: lis
         # about whether it's gzipped or not, we check for an optional `.gz`
         # file type in case it wasn't explicitly specified in the assertion.
         # For more context, see: https://jira.mesosphere.com/browse/DCOS_OSS-4531
-        expected_gzipped_file = (expected_file + '.gz')
+        expected_gzipped_file = f'{expected_file}.gz'
         unzipped_exists = expected_file in archived_items
         gzipped_exists = expected_gzipped_file in archived_items
 
-        message = ('expecting {} or {} in {}'.format(expected_file, expected_gzipped_file, archived_items))
+        message = f'expecting {expected_file} or {expected_gzipped_file} in {archived_items}'
+
         assert (unzipped_exists or gzipped_exists), message
 
 
 def verify_unit_response(unit_output: bytes, min_lines: int) -> None:
-    assert len(unit_output.decode().split('\n')) >= min_lines, 'Expect at least {} lines. Full unit output {}'.format(
-        min_lines, unit_output.decode())
+    assert (
+        len(unit_output.decode().split('\n')) >= min_lines
+    ), f'Expect at least {min_lines} lines. Full unit output {unit_output.decode()}'

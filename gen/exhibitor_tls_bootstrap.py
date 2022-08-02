@@ -63,7 +63,7 @@ def _find_package(packages_json: str) -> str:
     for package in packages:
         if package.startswith(PACKAGE_NAME):
             return package
-    raise Exception('{} package is not present'.format(PACKAGE_NAME))
+    raise Exception(f'{PACKAGE_NAME} package is not present')
 
 
 def _extract_package(package_path: str) -> None:
@@ -97,7 +97,7 @@ def _init_ca(alt_names: List[str]) -> None:
             str(cmd_path), '-d', CA_PATH, 'init-ca', '--sans', ','.join(alt_names)
         ])
     else:
-        print('[{}] CA files already exist'.format(__name__))
+        print(f'[{__name__}] CA files already exist')
 
 
 def _get_ca_alt_name(config: Dict[str, Any]) -> str:

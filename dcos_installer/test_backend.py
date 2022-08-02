@@ -88,7 +88,7 @@ def test_do_validate_config(tmpdir, monkeypatch):
 
 def test_get_config(tmpdir):
     workspace = tmpdir.strpath
-    temp_config_path = workspace + '/config.yaml'
+    temp_config_path = f'{workspace}/config.yaml'
 
     expected_data = {
         'cluster_name': 'DC/OS',
@@ -107,7 +107,7 @@ def test_get_config(tmpdir):
 def test_determine_config_type(tmpdir):
     # Ensure the default created config is of simple type
     workspace = tmpdir.strpath
-    temp_config_path = workspace + '/config.yaml'
+    temp_config_path = f'{workspace}/config.yaml'
     make_default_config_if_needed(temp_config_path)
     got_output = backend.determine_config_type(config_path=temp_config_path)
     expected_output = {
@@ -210,7 +210,8 @@ def test_do_aws_cf_configure_valid_storage_config(release_config_aws, valid_stor
 
 def test_override_aws_template_storage_region_name(release_config_aws, valid_storage_config, tmpdir, monkeypatch):
     config_str = valid_storage_config
-    config_str += '\naws_template_storage_region_name: {}'.format(os.environ['AWS_DEFAULT_REGION'])
+    config_str += f"\naws_template_storage_region_name: {os.environ['AWS_DEFAULT_REGION']}"
+
     assert aws_cf_configure(config_str, tmpdir, monkeypatch) == 0
 
 

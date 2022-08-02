@@ -47,10 +47,8 @@ class MockerBase:
     def _create_common_endpoints():
         """Helper function that takes care of creating/instantiating all the
            endpoints that are common for both EE and Open repositories"""
-        res = []
+        res = [ReflectingUnixSocketEndpoint('/run/dcos/pkgpanda-api.sock')]
 
-        # pkgpanda endpoint
-        res.append(ReflectingUnixSocketEndpoint('/run/dcos/pkgpanda-api.sock'))
         # exhibitor
         res.append(ReflectingTcpIpEndpoint(ip='127.0.0.1', port=8181))
         # Mesos masters

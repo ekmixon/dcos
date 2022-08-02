@@ -16,6 +16,5 @@ def check(physical_line):
     if pycodestyle.noqa(physical_line):
         return
     for rule in regex_rules:
-        match = rule.regex.search(physical_line)
-        if match:
+        if match := rule.regex.search(physical_line):
             return match.start(), "{code} {reason}".format(code=rule.code, reason=rule.reason)

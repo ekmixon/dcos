@@ -69,7 +69,7 @@ def validate_downstream_entry(entry: dict) -> None:
     entry_keys = set(entry.get('must', {}).keys()) | set(entry.get('default', {}).keys())
     if version_key in entry_keys:
         raise Exception(
-            'The downstream entry redefines config param {}, which must be inherited from upstream'.format(version_key)
+            f'The downstream entry redefines config param {version_key}, which must be inherited from upstream'
         )
 
 
@@ -78,31 +78,24 @@ def stringify_configuration(configuration: dict):
     to send to gen.generate()"""
     gen_config = {}
     for key, value in configuration.items():
-        if isinstance(value, list) or isinstance(value, dict):
+        if isinstance(value, (list, dict)):
             log.debug("Caught %s for genconf configuration, transforming to JSON string: %s", type(value), value)
             value = json.dumps(value)
 
         elif isinstance(value, bool):
-            if value:
-                value = 'true'
-            else:
-                value = 'false'
-
+            value = 'true' if value else 'false'
         elif isinstance(value, int):
             log.debug("Caught int for genconf configuration, transforming to string: %s", value)
             value = str(value)
 
-        elif isinstance(value, str):
-            pass
-
-        else:
+        elif not isinstance(value, str):
             log.error("Invalid type for value of %s in config. Got %s, only can handle list, dict, "
                       "int, bool, and str", key, type(value))
             raise Exception()
 
         gen_config[key] = value
 
-    log.debug('Stringified configuration: \n{}'.format(gen_config))
+    log.debug(f'Stringified configuration: \n{gen_config}')
     return gen_config
 
 
@@ -135,9 +128,12 @@ def add_units(cloudconfig, services, cloud_init_implementation='coreos'):
         for unit in services:
             unit_name = unit['name']
             if 'content' in unit:
-                write_files_entry = {'path': '/etc/systemd/system/{}'.format(unit_name),
-                                     'content': unit['content'],
-                                     'permissions': '0644'}
+                write_files_entry = {
+                    'path': f'/etc/systemd/system/{unit_name}',
+                    'content': unit['content'],
+                    'permissions': '0644',
+                }
+
                 cloudconfig['write_files'].append(write_files_entry)
             if 'enable' in unit and unit['enable']:
                 runcmd_entry = ['systemctl', 'enable', unit_name]
@@ -150,14 +146,16 @@ def add_units(cloudconfig, services, cloud_init_implementation='coreos'):
                                        'reload-or-try-restart']:
                     runcmd_entry = ['systemctl'] + opts + [unit['command'], unit_name]
                 else:
-                    raise Exception("Unsupported unit command: {}".format(unit['command']))
+                    raise Exception(f"Unsupported unit command: {unit['command']}")
                 cloudconfig['runcmd'].append(runcmd_entry)
     elif cloud_init_implementation == 'coreos':
         cloudconfig.setdefault('coreos', {}).setdefault('units', [])
         cloudconfig['coreos']['units'] += services
     else:
-        raise Exception("Parameter value '{}' is invalid for cloud_init_implementation".format(
-            cloud_init_implementation))
+        raise Exception(
+            f"Parameter value '{cloud_init_implementation}' is invalid for cloud_init_implementation"
+        )
+
 
     return cloudconfig
 
@@ -202,7 +200,7 @@ def merge_dictionaries(base, additions):
                 base_copy[k] = v
                 continue
             if isinstance(v, dict) and isinstance(base_copy[k], dict):
-                base_copy[k] = merge_dictionaries(base_copy.get(k, dict()), v)
+                base_copy[k] = merge_dictionaries(base_copy.get(k, {}), v)
                 continue
 
             # Append arrays
@@ -216,20 +214,20 @@ def merge_dictionaries(base, additions):
                 continue
 
             # Unknown types
-            raise ValueError("Can't merge type {} into type {}".format(type(v), type(base_copy[k])))
+            raise ValueError(f"Can't merge type {type(v)} into type {type(base_copy[k])}")
         except ValueError as ex:
-            raise ValueError("{} inside key {}".format(ex, k)) from ex
+            raise ValueError(f"{ex} inside key {k}") from ex
     return base_copy
 
 
 def load_templates(template_dict):
-    result = dict()
+    result = {}
     for name, template_list in template_dict.items():
-        result_list = list()
+        result_list = []
         for template_name in template_list:
             result_list.append(gen.template.parse_resources(template_name))
 
-            extra_filename = "gen_extra/" + template_name
+            extra_filename = f"gen_extra/{template_name}"
             if os.path.exists(extra_filename):
                 result_list.append(gen.template.parse_str(
                     load_string(extra_filename)))
@@ -240,7 +238,7 @@ def load_templates(template_dict):
 # Render the Jinja/YAML into YAML, then load the YAML and merge it to make the
 # final configuration files.
 def render_templates(template_dict, arguments):
-    rendered_templates = dict()
+    rendered_templates = {}
     templates = load_templates(template_dict)
     for name, templates in templates.items():
         full_template = None
@@ -287,7 +285,7 @@ def write_to_non_taken(base_filename, json):
     filename = base_filename
     while (os.path.exists(filename)):
         number += 1
-        filename = base_filename + '.{}'.format(number)
+        filename = base_filename + f'.{number}'
 
     write_json(filename, json)
 
@@ -308,7 +306,7 @@ def do_gen_package(config, package_filename):
                 fileinfo_drive, fileinfo_path = os.path.splitdrive(file_info['path'])
                 path = tmpdir + fileinfo_path
             else:
-                path = tmpdir + '/' + file_info['path']
+                path = f'{tmpdir}/' + file_info['path']
             try:
                 if os.path.dirname(path):
                     os.makedirs(os.path.dirname(path), mode=0o755)
@@ -361,8 +359,11 @@ def resolve_late_package(config, late_values):
     }
 
     assert not any(
-        _late_bind_placeholder_in(v) for file_info in resolved_config['package'] for v in file_info.values()
-    ), 'Resolved late package must not contain late value placeholder: {}'.format(resolved_config)
+        _late_bind_placeholder_in(v)
+        for file_info in resolved_config['package']
+        for v in file_info.values()
+    ), f'Resolved late package must not contain late value placeholder: {resolved_config}'
+
 
     return resolved_config
 
@@ -372,9 +373,12 @@ def extract_files_containing_late_variables(start_files):
     left_files = []
 
     for file_info in deepcopy(start_files):
-        assert not any(_late_bind_placeholder_in(v) for k, v in file_info.items() if k != 'content'), (
-            'File info must not contain late config placeholder in fields other than content: {}'.format(file_info)
-        )
+        assert not any(
+            _late_bind_placeholder_in(v)
+            for k, v in file_info.items()
+            if k != 'content'
+        ), f'File info must not contain late config placeholder in fields other than content: {file_info}'
+
 
         if file_info['content'] and _late_bind_placeholder_in(file_info['content']):
             found_files.append(file_info)
@@ -392,7 +396,7 @@ def extract_files_containing_late_variables(start_files):
 # This includes all possible sub scopes (Including config for things you don't use is fine).
 def flatten_parameters(scoped_parameters):
     flat = copy(scoped_parameters.get('variables', set()))
-    for name, possible_values in scoped_parameters.get('sub_scopes', dict()).items():
+    for name, possible_values in scoped_parameters.get('sub_scopes', {}).items():
         flat.add(name)
         for sub_scope in possible_values.values():
             flat |= flatten_parameters(sub_scope)
@@ -401,8 +405,6 @@ def flatten_parameters(scoped_parameters):
 
 
 def validate_all_arguments_match_parameters(parameters, setters, arguments):
-    errors = dict()
-
     # Gather all possible parameters from templates as well as setter parameters.
     all_parameters = flatten_parameters(parameters)
     for setter_list in setters.values():
@@ -411,10 +413,11 @@ def validate_all_arguments_match_parameters(parameters, setters, arguments):
             all_parameters.add(setter.name)
             all_parameters |= {name for name, value in setter.conditions}
 
-    # Check every argument is in the set of parameters.
-    for argument in arguments:
-        if argument not in all_parameters:
-            errors[argument] = 'Argument {} given but not in possible parameters {}'.format(argument, all_parameters)
+    errors = {
+        argument: f'Argument {argument} given but not in possible parameters {all_parameters}'
+        for argument in arguments
+        if argument not in all_parameters
+    }
 
     if len(errors):
         raise ValidationError(errors, set())
@@ -460,10 +463,10 @@ def get_dcosconfig_source_target_and_templates(
 
     # Re-arrange templates to be indexed by common name. Only allow multiple for one key if the key
     # is yaml (ends in .yaml).
-    templates = dict()
+    templates = {}
     for filename in template_filenames:
         key = os.path.basename(filename)
-        templates.setdefault(key, list())
+        templates.setdefault(key, [])
         templates[key].append(filename)
 
         if len(templates[key]) > 1 and not key.endswith('.yaml'):
@@ -529,7 +532,7 @@ def build_late_package(late_files, config_id, provider):
 
     return {
         'package': late_files,
-        'name': 'dcos-provider-{}-{}--setup'.format(config_id, provider)
+        'name': f'dcos-provider-{config_id}-{provider}--setup',
     }
 
 
@@ -547,7 +550,7 @@ def validate_and_raise(sources, targets):
 def get_late_variables(resolver, sources):
     # Gather out the late variables. The presence of late variables changes
     # whether or not a late package is created
-    late_variables = dict()
+    late_variables = {}
     # TODO(branden): Get the late vars and expressions from resolver.late
     for source in sources:
         for setter_list in source.setters.values():
@@ -566,13 +569,13 @@ def get_late_variables(resolver, sources):
                 assert setter.name not in late_variables
 
                 late_variables[setter.name] = setter.late_expression
-    log.debug('Late variables:\n{}'.format(pprint.pformat(late_variables)))
+    log.debug(f'Late variables:\n{pprint.pformat(late_variables)}')
 
     return late_variables
 
 
 def get_secret_variables(sources):
-    return list(set(var_name for source in sources for var_name in source.secret))
+    return list({var_name for source in sources for var_name in source.secret})
 
 
 def get_final_arguments(resolver):
@@ -595,7 +598,7 @@ def validate_cluster_packages(cluster_packages):
         try:
             PackageId(pkg_id)
         except pkgpanda.exceptions.ValidationError as ex:
-            raise Exception('Invalid cluster package ID: {}'.format(str(ex))) from ex
+            raise Exception(f'Invalid cluster package ID: {str(ex)}') from ex
 
 
 def get_config_id(argument_dict: dict):

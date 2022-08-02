@@ -47,32 +47,27 @@ class DcosDnsResolver(BaseResolver):
         reply = request.reply()
 
         if request.q.qtype != QTYPE.A:
-            log.error("Unsupported query qtype: `{}`".format(request.q.qtype))
+            log.error(f"Unsupported query qtype: `{request.q.qtype}`")
             reply.header.rcode = getattr(RCODE, 'NXDOMAIN')
             return reply
 
         query = str(request.q.qname)
         if query not in self._records:
-            log.error("qname `{}` not present in DB".format(query))
+            log.error(f"qname `{query}` not present in DB")
             reply.header.rcode = getattr(RCODE, 'NXDOMAIN')
             return reply
 
         log.info(
-            "DNS query for `{}`, type `{}`, reply `{}`, ttl `{}`".format(
-                query,
-                request.q.qtype,
-                self._records[query]['ip'],
-                self._records[query]['ttl'])
+            f"DNS query for `{query}`, type `{request.q.qtype}`, reply `{self._records[query]['ip']}`, ttl `{self._records[query]['ttl']}`"
         )
 
+
         reply.add_answer(
-            *RR.fromZone("{} {} A {}".format(
-                query,
-                self._records[query]['ttl'],
-                self._records[query]['ip'],
-                )
+            *RR.fromZone(
+                f"{query} {self._records[query]['ttl']} A {self._records[query]['ip']}"
             )
         )
+
 
         return reply
 
@@ -100,16 +95,15 @@ class DcosDnsServer:
     """Simple DNS server that responds to *.mesos DNS queries"""
 
     def __init__(self, server_addresses):
-        self._servers = []
-        for sa in server_addresses:
-            self._servers.append(
-                DNSServer(
-                    resolver=DcosDnsResolver(),
-                    address=sa[0],
-                    port=sa[1],
-                    logger=DNSLogger("pass"),  # Don't log anything to stdout
-                    )
+        self._servers = [
+            DNSServer(
+                resolver=DcosDnsResolver(),
+                address=sa[0],
+                port=sa[1],
+                logger=DNSLogger("pass"),  # Don't log anything to stdout
             )
+            for sa in server_addresses
+        ]
 
     def start(self):
         for s in self._servers:

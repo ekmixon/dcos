@@ -19,15 +19,19 @@ def test_setup(tmpdir):
     repo_path = tmp_repository(tmpdir)
     tmpdir.join("root", "bootstrap").write("", ensure=True)
 
-    check_call(["pkgpanda",
-                "setup",
-                "--silent",
-                "--root={0}/root".format(tmpdir),
-                "--rooted-systemd",
-                "--repository={}".format(repo_path),
-                "--config-dir={}".format(resources_test_dir("etc-active")),
-                "--no-systemd"
-                ])
+    check_call(
+        [
+            "pkgpanda",
+            "setup",
+            "--silent",
+            "--root={0}/root".format(tmpdir),
+            "--rooted-systemd",
+            f"--repository={repo_path}",
+            f'--config-dir={resources_test_dir("etc-active")}',
+            "--no-systemd",
+        ]
+    )
+
 
     expect_fs("{0}".format(tmpdir), ["repository", "root"])
 
@@ -74,14 +78,22 @@ def test_setup(tmpdir):
     }
 
     # Introspection should work right
-    active = set(check_output([
-        "pkgpanda",
-        "active",
-        "--silent",
-        "--root={0}/root".format(tmpdir),
-        "--rooted-systemd",
-        "--repository={}".format(repo_path),
-        "--config-dir={}".format(resources_test_dir("etc-active"))]).decode().split())
+    active = set(
+        check_output(
+            [
+                "pkgpanda",
+                "active",
+                "--silent",
+                "--root={0}/root".format(tmpdir),
+                "--rooted-systemd",
+                f"--repository={repo_path}",
+                f'--config-dir={resources_test_dir("etc-active")}',
+            ]
+        )
+        .decode()
+        .split()
+    )
+
 
     assert active == {
         "dcos-provider-abcdef-test--setup",
@@ -90,15 +102,19 @@ def test_setup(tmpdir):
     }
     tmpdir.join("root", "bootstrap").write("", ensure=True)
     # If we setup the same directory again we should get .old files.
-    check_call(["pkgpanda",
-                "setup",
-                "--silent",
-                "--root={0}/root".format(tmpdir),
-                "--rooted-systemd",
-                "--repository={}".format(repo_path),
-                "--config-dir={}".format(resources_test_dir("etc-active")),
-                "--no-systemd"
-                ])
+    check_call(
+        [
+            "pkgpanda",
+            "setup",
+            "--silent",
+            "--root={0}/root".format(tmpdir),
+            "--rooted-systemd",
+            f"--repository={repo_path}",
+            f'--config-dir={resources_test_dir("etc-active")}',
+            "--no-systemd",
+        ]
+    )
+
     # TODO(cmaloney): Validate things got placed correctly.
 
     expect_fs(
@@ -135,14 +151,22 @@ def test_setup(tmpdir):
         })
 
     # Should only pickup the packages once / one active set.
-    active = set(check_output([
-        "pkgpanda",
-        "active",
-        "--silent",
-        "--root={0}/root".format(tmpdir),
-        "--rooted-systemd",
-        "--repository={}".format(repo_path),
-        "--config-dir={}".format(resources_test_dir("etc-active"))]).decode().split())
+    active = set(
+        check_output(
+            [
+                "pkgpanda",
+                "active",
+                "--silent",
+                "--root={0}/root".format(tmpdir),
+                "--rooted-systemd",
+                f"--repository={repo_path}",
+                f'--config-dir={resources_test_dir("etc-active")}',
+            ]
+        )
+        .decode()
+        .split()
+    )
+
 
     assert active == {
         "dcos-provider-abcdef-test--setup",
@@ -160,15 +184,19 @@ def test_setup(tmpdir):
     tmpdir.mkdir("root/packages")
 
     # Uninstall / deactivate everything,
-    check_call(["pkgpanda",
-                "uninstall",
-                "--silent",
-                "--root={0}/root".format(tmpdir),
-                "--rooted-systemd",
-                "--repository={}".format(repo_path),
-                "--config-dir={}".format(resources_test_dir("etc-active")),
-                "--no-systemd"
-                ])
+    check_call(
+        [
+            "pkgpanda",
+            "uninstall",
+            "--silent",
+            "--root={0}/root".format(tmpdir),
+            "--rooted-systemd",
+            f"--repository={repo_path}",
+            f'--config-dir={resources_test_dir("etc-active")}',
+            "--no-systemd",
+        ]
+    )
+
 
     expect_fs("{0}".format(tmpdir), {"repository": None})
 
@@ -181,97 +209,157 @@ def test_activate(tmpdir):
     tmpdir.join("root", "bootstrap").write("", ensure=True)
 
     # TODO(cmaloney): Depending on setup here is less than ideal, but meh.
-    check_call(["pkgpanda",
-                "setup",
-                "--silent",
-                "--root={0}/root".format(tmpdir),
-                "--rooted-systemd",
-                "--repository={}".format(repo_path),
-                "--config-dir={}".format(resources_test_dir("etc-active")),
-                "--no-systemd"
-                ])
+    check_call(
+        [
+            "pkgpanda",
+            "setup",
+            "--silent",
+            "--root={0}/root".format(tmpdir),
+            "--rooted-systemd",
+            f"--repository={repo_path}",
+            f'--config-dir={resources_test_dir("etc-active")}',
+            "--no-systemd",
+        ]
+    )
 
-    assert run(["pkgpanda",
+
+    assert (
+        run(
+            [
+                "pkgpanda",
                 "activate",
                 "--silent",
                 "mesos--0.22.0",
                 "mesos-config--ffddcfb53168d42f92e4771c6f8a8a9a818fd6b8",
                 "--root={0}/root".format(tmpdir),
                 "--rooted-systemd",
-                "--repository={}".format(repo_path),
+                f"--repository={repo_path}",
                 "--config-dir=../resources/etc-active",
-                "--no-systemd"]) == ""
+                "--no-systemd",
+            ]
+        )
+        == ""
+    )
+
 
     # Check introspection to active is working right.
-    active = set(check_output([
-        "pkgpanda",
-        "active",
-        "--silent",
-        "--root={0}/root".format(tmpdir),
-        "--rooted-systemd",
-        "--repository={}".format(repo_path),
-        "--config-dir=../resources/etc-active"]).decode().split())
+    active = set(
+        check_output(
+            [
+                "pkgpanda",
+                "active",
+                "--silent",
+                "--root={0}/root".format(tmpdir),
+                "--rooted-systemd",
+                f"--repository={repo_path}",
+                "--config-dir=../resources/etc-active",
+            ]
+        )
+        .decode()
+        .split()
+    )
+
 
     assert active == {"mesos--0.22.0", "mesos-config--ffddcfb53168d42f92e4771c6f8a8a9a818fd6b8"}
 
     # Swap out one package
-    assert run(["pkgpanda",
+    assert (
+        run(
+            [
+                "pkgpanda",
                 "swap",
                 "--silent",
                 "mesos-config--justmesos",
                 "--root={0}/root".format(tmpdir),
                 "--rooted-systemd",
-                "--repository={}".format(repo_path),
+                f"--repository={repo_path}",
                 "--config-dir=../resources/etc-active",
-                "--no-systemd"]) == ""
+                "--no-systemd",
+            ]
+        )
+        == ""
+    )
+
 
     # Check introspection to active is working right.
-    active = set(check_output([
-        "pkgpanda",
-        "active",
-        "--silent",
-        "--root={0}/root".format(tmpdir),
-        "--rooted-systemd",
-        "--repository={}".format(repo_path),
-        "--config-dir=../resources/etc-active"]).decode().split())
+    active = set(
+        check_output(
+            [
+                "pkgpanda",
+                "active",
+                "--silent",
+                "--root={0}/root".format(tmpdir),
+                "--rooted-systemd",
+                f"--repository={repo_path}",
+                "--config-dir=../resources/etc-active",
+            ]
+        )
+        .decode()
+        .split()
+    )
+
 
     assert active == {"mesos--0.22.0", "mesos-config--justmesos"}
 
-    assert run(["pkgpanda",
+    assert (
+        run(
+            [
+                "pkgpanda",
                 "activate",
                 "--silent",
                 "mesos--0.22.0",
                 "--root={0}/root".format(tmpdir),
                 "--rooted-systemd",
-                "--repository={}".format(repo_path),
+                f"--repository={repo_path}",
                 "--config-dir=../resources/etc-active",
-                "--no-systemd"]) == ""
+                "--no-systemd",
+            ]
+        )
+        == ""
+    )
+
 
     # Check introspection to active is working right.
-    active = set(check_output([
-        "pkgpanda",
-        "active",
-        "--silent",
-        "--root={0}/root".format(tmpdir),
-        "--rooted-systemd",
-        "--repository={}".format(repo_path),
-        "--config-dir=../resources/etc-active"]).decode().split())
+    active = set(
+        check_output(
+            [
+                "pkgpanda",
+                "active",
+                "--silent",
+                "--root={0}/root".format(tmpdir),
+                "--rooted-systemd",
+                f"--repository={repo_path}",
+                "--config-dir=../resources/etc-active",
+            ]
+        )
+        .decode()
+        .split()
+    )
+
 
     assert active == {"mesos--0.22.0"}
 
     # Check that mesos--0.23.0 gets its state directory created.
-    assert not os.path.isdir(str(state_dir_root) + '/mesos')
-    assert run(["pkgpanda",
+    assert not os.path.isdir(f'{str(state_dir_root)}/mesos')
+    assert (
+        run(
+            [
+                "pkgpanda",
                 "activate",
                 "--silent",
                 "mesos--0.23.0",
                 "--root={0}/root".format(tmpdir),
                 "--rooted-systemd",
-                "--repository={}".format(repo_path),
+                f"--repository={repo_path}",
                 "--config-dir=../resources/etc-active",
                 "--no-systemd",
-                "--state-dir-root={}".format(state_dir_root)]) == ""
-    assert os.path.isdir(str(state_dir_root) + '/mesos')
+                f"--state-dir-root={state_dir_root}",
+            ]
+        )
+        == ""
+    )
+
+    assert os.path.isdir(f'{str(state_dir_root)}/mesos')
 
     # TODO(cmaloney): expect_fs
     # TODO(cmaloney): Test a full OS setup using http://0pointer.de/blog/projects/changing-roots.html
@@ -283,19 +371,23 @@ def test_systemd_unit_files(tmpdir):
     repo_path = tmp_repository(tmpdir)
     tmpdir.join("root", "bootstrap").write("", ensure=True)
 
-    check_call(["pkgpanda",
-                "setup",
-                "--silent",
-                "--root={0}/root".format(tmpdir),
-                "--rooted-systemd",
-                "--repository={}".format(repo_path),
-                "--config-dir={}".format(resources_test_dir("etc-active")),
-                "--no-systemd"
-                ])
+    check_call(
+        [
+            "pkgpanda",
+            "setup",
+            "--silent",
+            "--root={0}/root".format(tmpdir),
+            "--rooted-systemd",
+            f"--repository={repo_path}",
+            f'--config-dir={resources_test_dir("etc-active")}',
+            "--no-systemd",
+        ]
+    )
+
 
     unit_file = 'dcos-mesos-master.service'
-    base_path = '{}/root/{}'.format(tmpdir, unit_file)
-    wants_path = '{}/root/dcos.target.wants/{}'.format(tmpdir, unit_file)
+    base_path = f'{tmpdir}/root/{unit_file}'
+    wants_path = f'{tmpdir}/root/dcos.target.wants/{unit_file}'
 
     # The unit file is copied to the base dir and symlinked from dcos.target.wants.
     assert os.path.islink(wants_path)

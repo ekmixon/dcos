@@ -3,7 +3,7 @@ import requests
 
 
 def get_static_upstream_annotations() -> dict:
-    static_upstream_annotations = {
+    return {
         '/mesos/': 'Mesos',
         '/cosmos/service/': 'Cosmos',
         '/dcos-ui-update-service/api/v1/version/': 'DCOSUIUpdateService',
@@ -20,7 +20,6 @@ def get_static_upstream_annotations() -> dict:
         '/service/marathon/v2/queue': 'service:=marathon',
         '/service/metronome/v1/jobs': 'service:=metronome',
     }
-    return static_upstream_annotations
 
 
 class TestMetrics:

@@ -17,44 +17,54 @@ def test_checks_cli(dcos_api_session: DcosApiSession) -> None:
     test_uuid = uuid.uuid4().hex
 
     # Poststart node checks should pass.
-    dcos_api_session.metronome_one_off({
-        'id': 'test-checks-node-poststart-' + test_uuid,
-        'run': {
-            'cpus': .1,
-            'mem': 128,
-            'disk': 0,
-            'cmd': ' '.join(base_cmd + ['node-poststart']),
-        },
-    })
+    dcos_api_session.metronome_one_off(
+        {
+            'id': f'test-checks-node-poststart-{test_uuid}',
+            'run': {
+                'cpus': 0.1,
+                'mem': 128,
+                'disk': 0,
+                'cmd': ' '.join(base_cmd + ['node-poststart']),
+            },
+        }
+    )
+
 
     # Cluster checks should pass.
-    dcos_api_session.metronome_one_off({
-        'id': 'test-checks-cluster-' + test_uuid,
-        'run': {
-            'cpus': .1,
-            'mem': 128,
-            'disk': 0,
-            'cmd': ' '.join(base_cmd + ['cluster']),
-        },
-    })
+    dcos_api_session.metronome_one_off(
+        {
+            'id': f'test-checks-cluster-{test_uuid}',
+            'run': {
+                'cpus': 0.1,
+                'mem': 128,
+                'disk': 0,
+                'cmd': ' '.join(base_cmd + ['cluster']),
+            },
+        }
+    )
+
 
     # Check runner should only use the PATH and LD_LIBRARY_PATH from check config.
-    dcos_api_session.metronome_one_off({
-        'id': 'test-checks-env-' + test_uuid,
-        'run': {
-            'cpus': .1,
-            'mem': 128,
-            'disk': 0,
-            'cmd': ' '.join([
-                'env',
-                'PATH=badvalue',
-                'LD_LIBRARY_PATH=badvalue',
-                '/opt/mesosphere/bin/dcos-check-runner',
-                'check',
-                'node-poststart',
-            ]),
-        },
-    })
+    dcos_api_session.metronome_one_off(
+        {
+            'id': f'test-checks-env-{test_uuid}',
+            'run': {
+                'cpus': 0.1,
+                'mem': 128,
+                'disk': 0,
+                'cmd': ' '.join(
+                    [
+                        'env',
+                        'PATH=badvalue',
+                        'LD_LIBRARY_PATH=badvalue',
+                        '/opt/mesosphere/bin/dcos-check-runner',
+                        'check',
+                        'node-poststart',
+                    ]
+                ),
+            },
+        }
+    )
 
 
 def test_checks_api(dcos_api_session: DcosApiSession) -> None:
@@ -66,15 +76,21 @@ def test_checks_api(dcos_api_session: DcosApiSession) -> None:
     """
     checks_uri = '/system/checks/v1/'
     # Test that we can list and run node and cluster checks on a master, agent, and public agent.
-    check_nodes = []
-    for nodes in [dcos_api_session.masters, dcos_api_session.slaves, dcos_api_session.public_slaves]:
-        if nodes:
-            check_nodes.append(random.choice(nodes))
+    check_nodes = [
+        random.choice(nodes)
+        for nodes in [
+            dcos_api_session.masters,
+            dcos_api_session.slaves,
+            dcos_api_session.public_slaves,
+        ]
+        if nodes
+    ]
+
     logging.info('Testing %s on these nodes: %s', checks_uri, ', '.join(check_nodes))
 
     for node in check_nodes:
         for check_type in ['node', 'cluster']:
-            uri = '{}{}/'.format(checks_uri, check_type)
+            uri = f'{checks_uri}{check_type}/'
             logging.info('Testing %s on %s', uri, node)
 
             # List checks
@@ -94,7 +110,7 @@ def test_checks_api(dcos_api_session: DcosApiSession) -> None:
             response_status = {c: v['status'] for c, v in results['checks'].items()}
 
             # print out the response for debugging
-            logging.info('Response: {}'.format(results))
+            logging.info(f'Response: {results}')
             assert expected_status == response_status
 
             # check that overall status is also 0

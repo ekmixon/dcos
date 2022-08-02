@@ -24,62 +24,58 @@ def call_data(etcdctl_path, tmp_path):
 
     for user in ["root", "calico", "adminrouter"]:
         tmp_args = base_args + ["user", "add", "--no-password", user]
-        res["user_add_" + user] = {
-            "args":
-            tmp_args,
-            "action":
-            subprocess.CompletedProcess(
+        res[f"user_add_{user}"] = {
+            "args": tmp_args,
+            "action": subprocess.CompletedProcess(
                 args=tmp_args,
                 returncode=0,
                 stdout=b'',
                 stderr=b'',
-            )
+            ),
         }
+
 
     for role in ["calico_prefix", "adminrouter_prefix"]:
         tmp_args = base_args + ["role", "add", role]
-        res["role_add_" + role] = {
-            "args":
-            tmp_args,
-            "action":
-            subprocess.CompletedProcess(
+        res[f"role_add_{role}"] = {
+            "args": tmp_args,
+            "action": subprocess.CompletedProcess(
                 args=tmp_args,
                 returncode=0,
                 stdout=b'',
                 stderr=b'',
-            )
+            ),
         }
+
 
     for role in ["calico_prefix", "adminrouter_prefix"]:
         tmp_args = base_args + ["role", "add", role]
-        res["role_add_" + role] = {
-            "args":
-            tmp_args,
-            "action":
-            subprocess.CompletedProcess(
+        res[f"role_add_{role}"] = {
+            "args": tmp_args,
+            "action": subprocess.CompletedProcess(
                 args=tmp_args,
                 returncode=0,
                 stdout=b'',
                 stderr=b'',
-            )
+            ),
         }
+
 
     for role_grant in [("root", "root"), ("calico", "calico_prefix"),
                        ("adminrouter", "adminrouter_prefix")]:
         tmp_args = base_args + [
             "user", "grant-role", role_grant[0], role_grant[1]
         ]
-        res["role_grant_" + role_grant[0]] = {
-            "args":
-            tmp_args,
-            "action":
-            subprocess.CompletedProcess(
+        res[f"role_grant_{role_grant[0]}"] = {
+            "args": tmp_args,
+            "action": subprocess.CompletedProcess(
                 args=tmp_args,
                 returncode=0,
                 stdout=b'',
                 stderr=b'',
-            )
+            ),
         }
+
 
     for role_permission in [("calico_prefix", "/calico/"),
                             ("adminrouter_prefix", "/")]:
@@ -87,31 +83,29 @@ def call_data(etcdctl_path, tmp_path):
             "role", "grant", role_permission[0], "--prefix=true", "readwrite",
             role_permission[1]
         ]
-        res["role_permission_" + role_permission[0]] = {
-            "args":
-            tmp_args,
-            "action":
-            subprocess.CompletedProcess(
+        res[f"role_permission_{role_permission[0]}"] = {
+            "args": tmp_args,
+            "action": subprocess.CompletedProcess(
                 args=tmp_args,
                 returncode=0,
                 stdout=b'',
                 stderr=b'',
-            )
+            ),
         }
+
 
     for name in ["user", "role"]:
         tmp_args = base_args + [name, "list"]
-        res[name + "_list"] = {
-            "args":
-            tmp_args,
-            "action":
-            subprocess.CompletedProcess(
+        res[f"{name}_list"] = {
+            "args": tmp_args,
+            "action": subprocess.CompletedProcess(
                 args=tmp_args,
                 returncode=0,
                 stdout=b'',
                 stderr=b'',
-            )
+            ),
         }
+
 
     tmp_args = base_args + ["auth", "enable"]
     res["auth_enable"] = {
@@ -211,7 +205,7 @@ def args(tmp_path, etcdctl_path):
     cluster_state_file = tmp_path / "cluster_state_file.txt"
     cluster_nodes_file = tmp_path / "cluster_nodes_file.txt"
 
-    res = Namespace(
+    return Namespace(
         etcd_data_dir=str(etcdctl_path),
         zk_addr="127.0.0.1:2181",
         cluster_state_file=str(cluster_state_file),
@@ -222,8 +216,6 @@ def args(tmp_path, etcdctl_path):
         etcd_client_tls_cert="",
         etcd_client_tls_key="",
     )
-
-    return res
 
 
 class TestJoinCluster:
@@ -259,9 +251,8 @@ class TestJoinCluster:
 
         # Adjust the IP we are expecting
         for k in call_data:
-            call_data[k]["args"][2] = "http://{}:2379".format(active_node)
-            call_data[k]["action"].args[2] = "http://{}:2379".format(
-                active_node)
+            call_data[k]["args"][2] = f"http://{active_node}:2379"
+            call_data[k]["action"].args[2] = f"http://{active_node}:2379"
 
         detectip_mock = mock.Mock(return_value=this_node)
         subprocess_mock = mock.MagicMock(side_effect=subprocess_sideeffect)
@@ -301,9 +292,8 @@ class TestJoinCluster:
 
         # Adjust the IP we are expecting
         for k in call_data:
-            call_data[k]["args"][2] = "http://{}:2379".format(active_node)
-            call_data[k]["action"].args[2] = "http://{}:2379".format(
-                active_node)
+            call_data[k]["args"][2] = f"http://{active_node}:2379"
+            call_data[k]["action"].args[2] = f"http://{active_node}:2379"
 
         detectip_mock = mock.Mock(return_value=this_node)
         subprocess_mock = mock.MagicMock(side_effect=subprocess_sideeffect)
@@ -323,9 +313,13 @@ class TestJoinCluster:
             )
         }
         call_data["endpoint_health_this_node"]["args"][
-            2] = "http://{}:2379".format(this_node)
+            2
+        ] = f"http://{this_node}:2379"
+
         call_data["endpoint_health_this_node"]["action"].args[
-            2] = "http://{}:2379".format(this_node)
+            2
+        ] = f"http://{this_node}:2379"
+
         call_data["endpoint_health_active_node"] = {
             "args":
             tmp["args"].copy(),
@@ -338,9 +332,13 @@ class TestJoinCluster:
             )
         }
         call_data["endpoint_health_active_node"]["args"][
-            2] = "http://{}:2379".format(active_node)
+            2
+        ] = f"http://{active_node}:2379"
+
         call_data["endpoint_health_active_node"]["action"].args[
-            2] = "http://{}:2379".format(active_node)
+            2
+        ] = f"http://{active_node}:2379"
+
 
         with contextlib.ExitStack() as stack:
             stack.enter_context(

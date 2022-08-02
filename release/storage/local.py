@@ -17,7 +17,7 @@ class LocalStorageProvider(AbstractStorageProvider):
         self.__storage_path = path
 
     def __full_path(self, path):
-        return self.__storage_path + '/' + path
+        return f'{self.__storage_path}/{path}'
 
     def fetch(self, path):
         with open(self.__full_path(path), 'rb') as f:
@@ -73,13 +73,13 @@ class LocalStorageProvider(AbstractStorageProvider):
             assert dirpath.startswith(self.__storage_path)
             dirpath_no_prefix = dirpath[len(self.__storage_path) + 1:]
             for filename in filenames:
-                final_filenames.add(dirpath_no_prefix + '/' + filename)
+                final_filenames.add(f'{dirpath_no_prefix}/{filename}')
 
         return final_filenames
 
     @property
     def url(self):
-        return 'file://' + self.__storage_path + '/'
+        return f'file://{self.__storage_path}/'
 
 
 factories = {

@@ -137,7 +137,7 @@ class Systemd:
                 log.debug("Remove %s", path)
                 os.remove(path)
             except FileNotFoundError:
-                log.debug(unit_name + " not found")
+                log.debug(f"{unit_name} not found")
 
     def activate_new_unit_files(self):
         log.info("Move new unit files to their final locations.")
@@ -156,7 +156,7 @@ class Systemd:
         units = os.listdir(unit_dir)
         for unit_name in units:
             if unit_name in RESERVED_UNIT_NAMES:
-                raise Exception("Reserved name encountered - {}.".format(unit_name))
+                raise Exception(f"Reserved name encountered - {unit_name}.")
         return units
 
     @property
@@ -221,15 +221,15 @@ class Package:
 
     @property
     def environment(self):
-        return self.__pkginfo.get('environment', dict())
+        return self.__pkginfo.get('environment', {})
 
     @property
     def sysctl(self):
-        return self.__pkginfo.get('sysctl', dict())
+        return self.__pkginfo.get('sysctl', {})
 
     @property
     def check_dir(self):
-        return self.__path + '/check'
+        return f'{self.__path}/check'
 
     @property
     def id(self):
@@ -249,7 +249,7 @@ class Package:
 
     @property
     def requires(self):
-        return list(self.__pkginfo.get('requires', list()))
+        return list(self.__pkginfo.get('requires', []))
 
     @property
     def version(self):
@@ -320,8 +320,8 @@ def validate_compatible(packages, roles):
     # break a cluster.
 
     # Environment variables in packages, mapping from variable to package.
-    environment = dict()
-    sysctl_map = dict()
+    environment = {}
+    sysctl_map = {}
 
     for package in packages:
 
@@ -405,7 +405,7 @@ class Repository:
 
     def get_ids(self, name):
         # TODO(cmaloney): There is a lot of excess re-parsing here...
-        return list(pkg_id for pkg_id in self.list() if PackageId(pkg_id).name == name)
+        return [pkg_id for pkg_id in self.list() if PackageId(pkg_id).name == name]
 
     def has_package(self, id):
         return id in self.list()
@@ -449,10 +449,7 @@ class Repository:
         return Package(path, id, pkginfo)
 
     def load_packages(self, ids: Iterable):
-        packages = set()
-        for id in ids:
-            packages.add(self.load(id))
-        return packages
+        return {self.load(id) for id in ids}
 
     def integrity_check(self):
         # Check that all packages in the local repository have valid
@@ -482,7 +479,7 @@ class Repository:
         # they never end with `_tmp`. `{sha}_tmp` is still a valid version
         # number however so other code doing directory scans will be fine with
         # the temp folders.
-        tmp_path = pkg_path + '_tmp'
+        tmp_path = f'{pkg_path}_tmp'
 
         # Cleanup artifacts (if any) laying around from previous partial
         # package extractions.
@@ -572,7 +569,7 @@ class UserManagement:
         try:
             grp.getgrnam(group)
         except KeyError:
-            raise ValidationError("Group {} does not exist on the system".format(group))
+            raise ValidationError(f"Group {group} does not exist on the system")
 
     @staticmethod
     def validate_group_name(group_name):
@@ -580,8 +577,9 @@ class UserManagement:
             return
 
         if not re.match(linux_group_regex, group_name):
-            raise ValidationError("Group {} has invalid name, must match the following regex: {}".format(
-                group_name, linux_group_regex))
+            raise ValidationError(
+                f"Group {group_name} has invalid name, must match the following regex: {linux_group_regex}"
+            )
 
     @staticmethod
     def validate_user_group(username, group_name):
@@ -597,8 +595,8 @@ class UserManagement:
                 return
 
             raise ValidationError(
-                "User {} exists with current UID {}, however he should be assigned to group {} with {} UID, please "
-                "check `buildinfo.json`".format(username, user.pw_gid, group_name, group.gr_gid))
+                f"User {username} exists with current UID {user.pw_gid}, however he should be assigned to group {group_name} with {group.gr_gid} UID, please check `buildinfo.json`"
+            )
 
     def add_user(self, username, groupname):
         UserManagement.validate_username(username)
@@ -618,8 +616,10 @@ class UserManagement:
 
         # If we're not allowed to manage users, error
         if not self._add_users:
-            raise ValidationError("User {} doesn't exist but is required by a DC/OS Component, and "
-                                  "automatic user addition is disabled".format(username))
+            raise ValidationError(
+                f"User {username} doesn't exist but is required by a DC/OS Component, and automatic user addition is disabled"
+            )
+
 
         log.info("Add the user")
         add_user_cmd = [
@@ -650,8 +650,9 @@ class UserManagement:
             check_output(add_user_cmd)
             self._users.add(username)
         except CalledProcessError as ex:
-            raise ValidationError("User {} doesn't exist and couldn't be created because of: {}"
-                                  .format(username, ex.output))
+            raise ValidationError(
+                f"User {username} doesn't exist and couldn't be created because of: {ex.output}"
+            )
 
     def get_uid(self, username):
         # Code should have already asserted all users exist, and be passing us
@@ -690,7 +691,7 @@ class Install:
         self.__root = os.path.abspath(root)
         self.__config_dir = os.path.abspath(config_dir) if config_dir else None
         if rooted_systemd:
-            self.__systemd_dir = "{}/dcos.target.wants".format(root)
+            self.__systemd_dir = f"{root}/dcos.target.wants"
         else:
             self.__systemd_dir = "/etc/systemd/system/dcos.target.wants"
 
@@ -732,7 +733,9 @@ class Install:
         active_dir = self.get_active_dir()
 
         if not os.path.exists(active_dir):
-            if os.path.exists(active_dir + ".old") or os.path.exists(active_dir + ".new"):
+            if os.path.exists(f"{active_dir}.old") or os.path.exists(
+                f"{active_dir}.new"
+            ):
                 raise InstallError(
                     ("Broken past deploy. See {0}.new for what the (potentially incomplete) new state should be " +
                      "and optionally {0}.old if it exists for the complete previous state.").format(active_dir))
@@ -780,10 +783,10 @@ class Install:
         active_names = self.get_active_names()
         active_dirs = list(map(self._make_abs, self.__well_known_dirs + ["active"]))
 
-        new_names = [name + ".new" for name in active_names]
-        new_dirs = [name + ".new" for name in active_dirs]
+        new_names = [f"{name}.new" for name in active_names]
+        new_dirs = [f"{name}.new" for name in active_dirs]
 
-        old_names = [name + ".old" for name in active_names]
+        old_names = [f"{name}.old" for name in active_names]
 
         log.info("Remove all pre-existing new and old directories")
         for name in chain(new_names, old_names):
@@ -828,10 +831,11 @@ class Install:
         def _get_service_names(_dir):
             service_files = list(map(os.path.basename, _get_service_files(_dir)))
 
-            if not service_files:
-                return []
-
-            return list(map(lambda name: os.path.splitext(name)[0], service_files))
+            return (
+                list(map(lambda name: os.path.splitext(name)[0], service_files))
+                if service_files
+                else []
+            )
 
         # Add the folders, config in each package.
         for package in packages:
@@ -897,7 +901,7 @@ class Install:
             # Ensure the state directory exists
             # TODO(cmaloney): On upgrade take a snapshot?
             if self.__manage_state_dir:
-                state_dir_path = self.__state_dir_root + '/' + package.name
+                state_dir_path = f'{self.__state_dir_root}/{package.name}'
                 if package.state_directory:
                     make_directory(state_dir_path)
                     if package.username and not is_windows:
@@ -917,7 +921,7 @@ class Install:
 
         log.info("Prepare new systemd units for activation.")
         if not self.__skip_systemd_dirs:
-            new_wants_dir = self._make_abs(self.__systemd_dir + ".new")
+            new_wants_dir = self._make_abs(f"{self.__systemd_dir}.new")
             if os.path.exists(new_wants_dir):
                 self.systemd.stage_new_units(new_wants_dir)
 
@@ -941,7 +945,7 @@ class Install:
     def recover_swap_active(self):
         state_filename = self._make_abs("install_progress")
         if not os.path.exists(state_filename):
-            return False, "Path does not exist: {}".format(state_filename)
+            return False, f"Path does not exist: {state_filename}"
         state = load_json(state_filename)
         extension = state['extension']
         stage = state['stage']
@@ -950,7 +954,7 @@ class Install:
         elif stage == 'move_new':
             self.swap_active(extension, False)
         else:
-            raise ValueError("Unexpected state to recover from {}".format(state))
+            raise ValueError(f"Unexpected state to recover from {state}")
 
         return True, ""
 
@@ -972,12 +976,12 @@ class Install:
         # hard/fast fail at any point the activate swap can continue.
         def record_state(state):
             log.info("Atomically write all the state to disk, swap into place.")
-            with open(state_filename + ".new", "w+") as f:
+            with open(f"{state_filename}.new", "w+") as f:
                 state['extension'] = extension
                 json.dump(state, f)
                 f.flush()
                 os.fsync(f.fileno())
-            os.replace(state_filename + ".new", state_filename)
+            os.replace(f"{state_filename}.new", state_filename)
 
         if archive:
             # TODO(cmaloney): stop all systemd services in dcos.target.wants
@@ -990,7 +994,7 @@ class Install:
 
             log.info("Archive the current config.")
             for active in active_names:
-                old_path = active + ".old"
+                old_path = f"{active}.old"
                 if os.path.exists(active):
                     shutil.move(active, old_path)
 

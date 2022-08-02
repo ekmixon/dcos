@@ -12,17 +12,7 @@ from dcos_e2e.cluster import Cluster
 from dcos_e2e.node import Output
 
 
-@pytest.mark.skipif(
-    only_changed(E2E_SAFE_DEFAULT + [
-        # All packages safe except named packages
-        'packages/*/**',
-        '!packages/{bouncer,bouncer-deps,cockroach,flask,libpq,openssl,six}/**',
-        '!packages/python*/**',
-        # All e2e tests safe except this test
-        'test-e2e/test_*', '!' + escape(trailing_path(__file__, 2)),
-    ]),
-    reason='Only safe files modified',
-)
+@pytest.mark.skipif(only_changed((E2E_SAFE_DEFAULT + ['packages/*/**', '!packages/{bouncer,bouncer-deps,cockroach,flask,libpq,openssl,six}/**', '!packages/python*/**', 'test-e2e/test_*', f'!{escape(trailing_path(__file__, 2))}'])), reason='Only safe files modified')
 def test_superuser_service_account_login(
     docker_backend: ClusterBackend,
     artifact_path: Path,
@@ -41,10 +31,10 @@ def test_superuser_service_account_login(
         'superuser_service_account_public_key': rsa_keypair[1],
     }
     with Cluster(
-        cluster_backend=docker_backend,
-        agents=0,
-        public_agents=0,
-    ) as cluster:
+            cluster_backend=docker_backend,
+            agents=0,
+            public_agents=0,
+        ) as cluster:
         cluster.install_dcos_from_path(
             dcos_installer=artifact_path,
             dcos_config={
@@ -60,8 +50,8 @@ def test_superuser_service_account_login(
             log_dir=log_dir,
         )
         master = next(iter(cluster.masters))
-        master_url = 'http://' + str(master.public_ip_address)
-        login_endpoint = master_url + '/acs/api/v1/auth/login'
+        master_url = f'http://{str(master.public_ip_address)}'
+        login_endpoint = f'{master_url}/acs/api/v1/auth/login'
 
         service_login_token = jwt_token(superuser_uid, rsa_keypair[0], 30)
 

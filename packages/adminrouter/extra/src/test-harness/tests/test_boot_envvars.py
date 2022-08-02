@@ -81,9 +81,9 @@ class TestDefaultSchemeEnvVarBehaviour:
 
         ar = nginx_class(default_scheme="https://")
         agent_id = AGENT3_ID
-        url_good = ar.make_url_from_path('/agent/{}/blah/blah'.format(agent_id))
+        url_good = ar.make_url_from_path(f'/agent/{agent_id}/blah/blah')
         agent_id = AGENT1_ID
-        url_bad = ar.make_url_from_path('/agent/{}/blah/blah'.format(agent_id))
+        url_bad = ar.make_url_from_path(f'/agent/{agent_id}/blah/blah')
 
         with GuardedSubprocess(ar):
             lbf = LineBufferFilter(filter_regexp,
@@ -240,7 +240,7 @@ class TestUpstreamsEnvVarBehaviour:
 
         ar = nginx_class(upstream_mesos="http://127.0.0.2:5050")
         agent_id = AGENT1_ID
-        url = ar.make_url_from_path('/agent/{}/blah/blah'.format(agent_id))
+        url = ar.make_url_from_path(f'/agent/{agent_id}/blah/blah')
 
         with GuardedSubprocess(ar):
             lbf = LineBufferFilter(filter_regexp,
@@ -313,9 +313,11 @@ class TestHostIPVarBehavriour:
     def test_if_var_is_verified(self, invalid_ip, nginx_class, mocker):
         filter_regexp = {
             'Local Mesos Master IP: unknown': SearchCriteria(1, True),
-            'HOST_IP var is not a valid ipv4: {}'.format(invalid_ip):
-                SearchCriteria(1, True),
+            f'HOST_IP var is not a valid ipv4: {invalid_ip}': SearchCriteria(
+                1, True
+            ),
         }
+
         ar = nginx_class(host_ip=invalid_ip)
 
         with GuardedSubprocess(ar):
@@ -328,9 +330,7 @@ class TestHostIPVarBehavriour:
 
     @pytest.mark.parametrize("valid_ip", ["1.2.3.4", "255.255.255.255", "0.0.0.1"])
     def test_if_var_is_honoured(self, valid_ip, nginx_class, mocker):
-        filter_regexp = {
-            'Local Mesos Master IP: {}'.format(valid_ip): SearchCriteria(1, True),
-        }
+        filter_regexp = {f'Local Mesos Master IP: {valid_ip}': SearchCriteria(1, True)}
         ar = nginx_class(host_ip=valid_ip)
 
         with GuardedSubprocess(ar):

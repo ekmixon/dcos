@@ -109,10 +109,10 @@ class AzureBlockBlobStorageProvider(AbstractStorageProvider):
         return self.blob_service.get_blob_to_path(self.container, path, local_path)
 
     def list_recursive(self, path):
-        names = set()
-        for blob in self.blob_service.list_blobs(self.container, path):
-            names.add(blob.name)
-        return names
+        return {
+            blob.name
+            for blob in self.blob_service.list_blobs(self.container, path)
+        }
 
     def remove_recursive(self, path):
         for blob_name in self.list_recursive(path):

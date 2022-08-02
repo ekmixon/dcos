@@ -171,7 +171,7 @@ class LogWriter:
         """
         self._fd = fd
         self._log_level = log_level
-        self._line_buffer = list()
+        self._line_buffer = []
         self._log_fd = open(log_file, 'ab', buffering=0)
 
     def stop(self):
@@ -350,7 +350,7 @@ class LogCatcher:
             # Test harness logs are created before this code has a chance to run,
             # so we make an exception so that cleanup does not remove test's
             # harnes log.
-            if f_name == self._GIT_KEEP_FILE or f_name == 'test-harness.log':
+            if f_name in [self._GIT_KEEP_FILE, 'test-harness.log']:
                 log.debug("Skipping file: `%s`", f_name)
                 continue
 
@@ -390,11 +390,7 @@ class LogCatcher:
             log_level (int): log level with which all the log lines should be
                 logged with, do not log to stdout if None
         """
-        if log_file is not None:
-            log_path = os.path.join(self._LOG_DIR, log_file)
-        else:
-            log_path = None
-
+        log_path = None if log_file is None else os.path.join(self._LOG_DIR, log_file)
         writer = LogWriter(fd, log_path, log_level)
         self._add_writers_queue.put(writer)
         self._add_writers_queue.join()
@@ -473,7 +469,7 @@ class ManagedSubprocess(abc.ABC):
     @property
     def stdout(self):
         """Return stdout file descriptor of this process"""
-        assert_msg = "`{}` process must be initialized first".format(self.id)
+        assert_msg = f"`{self.id}` process must be initialized first"
         assert self._process is not None, assert_msg
 
         return self._process.stdout
@@ -481,7 +477,7 @@ class ManagedSubprocess(abc.ABC):
     @property
     def stderr(self):
         """Return stderr file descriptor of this process"""
-        assert_msg = "`{}` process must be initialized first".format(self.id)
+        assert_msg = f"`{self.id}` process must be initialized first"
         assert self._process is not None, assert_msg
 
         return self._process.stderr
@@ -498,7 +494,7 @@ class ManagedSubprocess(abc.ABC):
 
         if not self._wait_for_subprocess_to_finish_init():
             self.stop()
-            pytest.exit("Failed to start `{}` process".format(self.id))
+            pytest.exit(f"Failed to start `{self.id}` process")
 
     def _start_subprocess(self):
         msg_fmt = "Starting `%s`, env: `%s`"
@@ -670,7 +666,7 @@ class NginxBase(ManagedSubprocess):
         assert openresty_dir is not None, "'AR_BIN_DIR' env var is not set!"
         self.binary = os.path.join(openresty_dir, "nginx", "sbin", "nginx")
 
-        config_file_name = "nginx.{}.conf".format(self._role)
+        config_file_name = f"nginx.{self._role}.conf"
         self.config_path = os.path.join(openresty_dir,
                                         "nginx",
                                         "conf",
@@ -806,12 +802,9 @@ class NginxBase(ManagedSubprocess):
             base = 'http://127.0.0.1:61001/'
 
         if not len(path):
-            return base + '/'
+            return f'{base}/'
 
-        if path[0] != '/':
-            return base + path
-
-        return base + path[1:]
+        return base + path if path[0] != '/' else base + path[1:]
 
     @property
     def syslog_line_buffer(self):
@@ -849,9 +842,9 @@ class Vegeta(ManagedSubprocess):
                 raise
 
     def _setup_targets_file(self, target, jwt=None):
-        body = "GET {}\n".format(target)
+        body = f"GET {target}\n"
         if jwt is not None:
-            body += "Authorization: {}\n".format(jwt['Authorization'])
+            body += f"Authorization: {jwt['Authorization']}\n"
 
         with open(self._TARGETS_FILE, 'w') as fh:
             fh.write(body)

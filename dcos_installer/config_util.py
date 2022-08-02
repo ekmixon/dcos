@@ -25,9 +25,10 @@ def make_serve_dir(gen_out):
         i['filename'] for i in gen_out.cluster_packages.values() if i['filename'] not in gen_out.stable_artifacts
     )
     bootstrap_files = [
-        "bootstrap/{}.bootstrap.tar.xz".format(gen_out.arguments['bootstrap_id']),
-        "bootstrap/{}.active.json".format(gen_out.arguments['bootstrap_id'])
+        f"bootstrap/{gen_out.arguments['bootstrap_id']}.bootstrap.tar.xz",
+        f"bootstrap/{gen_out.arguments['bootstrap_id']}.active.json",
     ]
+
     fetch_artifacts(
         bootstrap_files + cached_packages,
         ARTIFACT_DIR,
@@ -81,10 +82,10 @@ def do_move_atomic(src_dir, dest_dir, filenames):
         # Copy across
         for filename in filenames:
             for parent_dir in parent_dirs(filename):
-                dest_parent_dir = dest_dir + '/' + parent_dir
+                dest_parent_dir = f'{dest_dir}/{parent_dir}'
                 if not os.path.exists(dest_parent_dir):
                     mkdir(dest_parent_dir)
-            copy(src_dir + '/' + filename, dest_dir + '/' + filename)
+            copy(f'{src_dir}/{filename}', f'{dest_dir}/{filename}')
     except subprocess.CalledProcessError as ex:
         log.error("Copy failed: %s\nOutput:\n%s", ex.cmd, ex.output)
         log.error("Removing partial artifacts")
@@ -96,12 +97,12 @@ def do_move_atomic(src_dir, dest_dir, filenames):
 
 def fetch_artifacts(filenames, src_dir, dest_dir):
     # If all the dest files already exist, no-op
-    dest_files = [dest_dir + '/' + filename for filename in filenames]
+    dest_files = [f'{dest_dir}/{filename}' for filename in filenames]
     if all(map(os.path.exists, dest_files)):
         return
 
     # Make sure the source files exist
-    src_files = [src_dir + '/' + filename for filename in filenames]
+    src_files = [f'{src_dir}/{filename}' for filename in filenames]
     for filename in src_files:
         if not os.path.exists(filename):
             log.error("Internal Error: %s not found. Should have been in the installer container.", filename)
@@ -113,6 +114,8 @@ def fetch_artifacts(filenames, src_dir, dest_dir):
 
 def installer_latest_complete_artifact(variant_str):
     return pkgpanda.util.load_json(
-        ARTIFACT_DIR + '/complete/{}complete.latest.json'.format(
-            pkgpanda.util.variant_prefix(pkgpanda.util.variant_object(variant_str)))
+        (
+            ARTIFACT_DIR
+            + f'/complete/{pkgpanda.util.variant_prefix(pkgpanda.util.variant_object(variant_str))}complete.latest.json'
+        )
     )

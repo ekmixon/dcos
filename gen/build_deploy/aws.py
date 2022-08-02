@@ -19,7 +19,7 @@ from pkgpanda.util import logger, split_by_token
 
 
 def get_ip_detect(name):
-    return yaml.dump(resource_string('gen', 'ip-detect/{}.sh'.format(name)).decode())
+    return yaml.dump(resource_string('gen', f'ip-detect/{name}.sh').decode())
 
 
 def calculate_ip_detect_public_contents(aws_masters_have_public_ip):
@@ -274,7 +274,7 @@ def gen_ami_mapping(mappings):
     # all will have region by default
     final = {}
     for region, amis in region_to_ami_map.items():
-        final[region] = dict()
+        final[region] = {}
         for map_entry in mappings:
             final_key = 'default' if map_entry == 'natami' else map_entry
             final[region][final_key] = amis[map_entry]
@@ -330,15 +330,15 @@ def validate_cf(template_body):
 
 def _as_cf_artifact(filename, cloudformation):
     return {
-        'channel_path': 'cloudformation/{}'.format(filename),
+        'channel_path': f'cloudformation/{filename}',
         'local_content': cloudformation,
-        'content_type': 'application/json; charset=utf-8'
+        'content_type': 'application/json; charset=utf-8',
     }
 
 
 def _as_artifact_and_pkg(variant_prefix, filename, bundle: Tuple):
     cloudformation, results = bundle
-    yield _as_cf_artifact("{}{}".format(variant_prefix, filename), cloudformation)
+    yield _as_cf_artifact(f"{variant_prefix}{filename}", cloudformation)
     for filename in results.stable_artifacts:
         yield {
             'reproducible_path': filename,
@@ -348,11 +348,11 @@ def _as_artifact_and_pkg(variant_prefix, filename, bundle: Tuple):
 
 def gen_supporting_template():
     for template_key in ['infra.json']:
-        cf_template = 'aws/templates/advanced/{}'.format(template_key)
+        cf_template = f'aws/templates/advanced/{template_key}'
         cloudformation = render_cloudformation_transform(resource_string("gen", cf_template).decode(),
                                                          nat_ami_mapping=gen_ami_mapping({'natami'}))
 
-        print("Validating CloudFormation: {}".format(cf_template))
+        print(f"Validating CloudFormation: {cf_template}")
         validate_cf(cloudformation)
 
         yield _as_cf_artifact(
@@ -363,11 +363,12 @@ def gen_supporting_template():
 def make_advanced_bundle(variant_args, extra_sources, template_name, cc_params):
     extra_templates = [
         'aws/dcos-config.yaml',
-        'aws/templates/advanced/{}'.format(template_name)
+        f'aws/templates/advanced/{template_name}',
     ]
+
     supported_os = ('coreos', 'el7')
     if cc_params['os_type'] not in supported_os:
-        raise RuntimeError('Unsupported os_type: {}'.format(cc_params['os_type']))
+        raise RuntimeError(f"Unsupported os_type: {cc_params['os_type']}")
     elif cc_params['os_type'] == 'coreos':
         extra_templates += ['coreos-aws/cloud-config.yaml', 'coreos/cloud-config.yaml']
         cloud_init_implementation = 'coreos'
@@ -405,7 +406,7 @@ def make_advanced_bundle(variant_args, extra_sources, template_name, cc_params):
     cloudformation = render_cloudformation(
         results.templates[template_name],
         cloud_config=variant_cloudconfig)
-    print("Validating CloudFormation: {}".format(template_name))
+    print(f"Validating CloudFormation: {template_name}")
     validate_cf(cloudformation)
 
     return (cloudformation, results)
@@ -425,7 +426,7 @@ def gen_advanced_template(arguments, variant_prefix, reproducible_artifact_path,
         params['os_type'] = os_type
         params['node_type'] = node_type
         template_key = 'advanced-{}'.format(node_type)
-        template_name = template_key + '.json'
+        template_name = f'{template_key}.json'
 
         def _as_artifact(filename, bundle):
             yield from _as_artifact_and_pkg(variant_prefix, filename, bundle)
@@ -530,7 +531,7 @@ def gen_buttons(build_name, reproducible_artifact_path, tag, commit, variant_arg
     # Generate the button page.
     # TODO(cmaloney): Switch to package_resources
     variant_list = list(sorted(pkgpanda.util.variant_prefix(x) for x in variant_arguments.keys()))
-    regular_buttons = list()
+    regular_buttons = []
 
     for region in aws_region_names:
         def get_button(template_name, s3_url):
@@ -547,8 +548,14 @@ def gen_buttons(build_name, reproducible_artifact_path, tag, commit, variant_arg
             button_line += region_line_template.format(
                 region_name=region['name'],
                 region_id=region['id'],
-                single_master_button=get_button(variant_prefix + 'single-master', s3_url=s3_url),
-                multi_master_button=get_button(variant_prefix + 'multi-master', s3_url=s3_url))
+                single_master_button=get_button(
+                    f'{variant_prefix}single-master', s3_url=s3_url
+                ),
+                multi_master_button=get_button(
+                    f'{variant_prefix}multi-master', s3_url=s3_url
+                ),
+            )
+
 
         regular_buttons.append(button_line)
 

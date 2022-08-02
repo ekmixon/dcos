@@ -29,9 +29,7 @@ from pkgpanda.util import copy_directory, copy_file, logger, make_directory
 
 
 def calculate_custom_check_bins_provided(custom_check_bins_dir):
-    if os.path.isdir(custom_check_bins_dir):
-        return 'true'
-    return 'false'
+    return 'true' if os.path.isdir(custom_check_bins_dir) else 'false'
 
 
 def calculate_custom_check_bins_hash(custom_check_bins_provided, custom_check_bins_dir):
@@ -46,15 +44,18 @@ def calculate_custom_check_bins_package_id(
         custom_check_bins_hash):
     if custom_check_bins_provided == 'true':
         assert custom_check_bins_hash
-        return '{}--{}'.format(custom_check_bins_package_name, custom_check_bins_hash)
+        return f'{custom_check_bins_package_name}--{custom_check_bins_hash}'
     return ''
 
 
 def calculate_check_search_path(custom_check_bins_provided, custom_check_bins_package_id):
     if custom_check_bins_provided == 'true':
         assert custom_check_bins_package_id != ''
-        return (DEFAULT_CHECK_SEARCH_PATH + ':' + install_root + '/' +
-                'packages/{}'.format(custom_check_bins_package_id))
+        return (
+            f'{DEFAULT_CHECK_SEARCH_PATH}:{install_root}/'
+            + f'packages/{custom_check_bins_package_id}'
+        )
+
     return DEFAULT_CHECK_SEARCH_PATH
 
 
@@ -69,9 +70,14 @@ def calculate_package_ids(bootstrap_variant, custom_check_bins_provided, custom_
 def validate_custom_check_bins_dir(custom_check_bins_dir):
     assert len(custom_check_bins_dir) > 0, 'custom_check_bins_dir must be a valid directory name'
     if os.path.exists(custom_check_bins_dir):
-        assert os.path.isdir(custom_check_bins_dir), '{} must be a directory'.format(custom_check_bins_dir)
+        assert os.path.isdir(
+            custom_check_bins_dir
+        ), f'{custom_check_bins_dir} must be a directory'
+
         for entry in os.scandir(custom_check_bins_dir):
-            assert entry.is_file(), '{} must not contain any subdirectories'.format(custom_check_bins_dir)
+            assert (
+                entry.is_file()
+            ), f'{custom_check_bins_dir} must not contain any subdirectories'
 
 
 onprem_source = Source(entry={
@@ -652,10 +658,8 @@ def make_bash(gen_out) -> None:
     """Build bash deployment artifacts and return a list of their filenames."""
     # Build custom check bins package
     if gen_out.arguments['custom_check_bins_provided'] == 'true':
-        package_filename = 'packages/{}/{}.tar.xz'.format(
-            gen_out.arguments['custom_check_bins_package_name'],
-            gen_out.arguments['custom_check_bins_package_id'],
-        )
+        package_filename = f"packages/{gen_out.arguments['custom_check_bins_package_name']}/{gen_out.arguments['custom_check_bins_package_id']}.tar.xz"
+
         make_custom_check_bins_package(gen_out.arguments['custom_check_bins_dir'], package_filename)
         gen_out.utils.add_stable_artifact(package_filename)
 
@@ -674,35 +678,34 @@ def make_bash(gen_out) -> None:
             owner=file_dict.get('owner', 'root'),
             group=file_dict.get('group', 'root'))
 
-    # Reformat the DC/OS systemd units to be bash written and started.
-    # Write out the units as files
-    setup_services = ""
-    for service in gen_out.templates[dcos_services_yaml]:
-        # If no content, service is assumed to already exist
-        if 'content' not in service:
-            continue
-        setup_services += file_template.format(
-            filename='/etc/systemd/system/{}'.format(service['name']),
-            content=service['content'],
-            mode='0644',
-            owner='root',
-            group='root')
-
-    setup_services += "\n"
+    setup_services = (
+        "".join(
+            file_template.format(
+                filename=f"/etc/systemd/system/{service['name']}",
+                content=service['content'],
+                mode='0644',
+                owner='root',
+                group='root',
+            )
+            for service in gen_out.templates[dcos_services_yaml]
+            if 'content' in service
+        )
+        + "\n"
+    )
 
     # Start, enable services which request it.
     for service in gen_out.templates[dcos_services_yaml]:
         assert service['name'].endswith('.service')
         name = service['name'][:-8]
         if service.get('enable'):
-            setup_services += "systemctl enable {}\n".format(name)
+            setup_services += f"systemctl enable {name}\n"
         if 'command' in service:
             if service.get('no_block'):
                 setup_services += systemctl_no_block_service.format(
                     command=service['command'],
                     name=name)
             else:
-                setup_services += "systemctl {} {}\n".format(service['command'], name)
+                setup_services += f"systemctl {service['command']} {name}\n"
 
     # Populate in the bash script template
     bash_script = gen.template.parse_str(bash_template).render({
@@ -746,16 +749,23 @@ def make_installer_docker(variant, variant_info, installer_info):
     bootstrap_id = variant_info['bootstrap']
     assert len(bootstrap_id) > 0
 
-    image_version = util.dcos_image_commit[:18] + '-' + bootstrap_id[:18]
-    genconf_tar = "dcos-genconf." + image_version + ".tar"
-    installer_filename = "packages/cache/dcos_generate_config." + pkgpanda.util.variant_prefix(variant) + "sh"
-    bootstrap_filename = bootstrap_id + ".bootstrap.tar.xz"
-    bootstrap_active_filename = bootstrap_id + ".active.json"
+    image_version = f'{util.dcos_image_commit[:18]}-{bootstrap_id[:18]}'
+    genconf_tar = f"dcos-genconf.{image_version}.tar"
+    installer_filename = f"packages/cache/dcos_generate_config.{pkgpanda.util.variant_prefix(variant)}sh"
+
+    bootstrap_filename = f"{bootstrap_id}.bootstrap.tar.xz"
+    bootstrap_active_filename = f"{bootstrap_id}.active.json"
     installer_bootstrap_filename = installer_info['bootstrap'] + '.bootstrap.tar.xz'
-    bootstrap_latest_filename = pkgpanda.util.variant_prefix(variant) + 'bootstrap.latest'
-    latest_complete_filename = pkgpanda.util.variant_prefix(variant) + 'complete.latest.json'
+    bootstrap_latest_filename = (
+        f'{pkgpanda.util.variant_prefix(variant)}bootstrap.latest'
+    )
+
+    latest_complete_filename = (
+        f'{pkgpanda.util.variant_prefix(variant)}complete.latest.json'
+    )
+
     packages_dir = 'packages'
-    docker_image_name = 'mesosphere/dcos-genconf:' + image_version
+    docker_image_name = f'mesosphere/dcos-genconf:{image_version}'
 
     # TODO(cmaloney): All of this should use package_resources
     with tempfile.TemporaryDirectory() as build_dir:
@@ -764,17 +774,21 @@ def make_installer_docker(variant, variant_info, installer_info):
         print("Setting up build environment")
 
         def dest_path(filename):
-            return build_dir + '/' + filename
+            return f'{build_dir}/{filename}'
 
         def copy_to_build(src_prefix, filename):
             dest_filename = dest_path(filename)
             os.makedirs(os.path.dirname(dest_filename), exist_ok=True)
-            copy_file(os.getcwd() + '/' + src_prefix + '/' + filename, dest_filename)
+            copy_file(f'{os.getcwd()}/{src_prefix}/{filename}', dest_filename)
 
         def fill_template(base_name, format_args):
             pkgpanda.util.write_string(
                 dest_path(base_name),
-                pkg_resources.resource_string(__name__, 'bash/' + base_name + '.in').decode().format(**format_args))
+                pkg_resources.resource_string(__name__, f'bash/{base_name}.in')
+                .decode()
+                .format(**format_args),
+            )
+
 
         fill_template('Dockerfile', {
             'installer_bootstrap_filename': installer_bootstrap_filename,
@@ -800,7 +814,11 @@ def make_installer_docker(variant, variant_info, installer_info):
         copy_to_build('packages/cache/complete', latest_complete_filename)
         for package_id in variant_info['packages']:
             package_name = pkgpanda.PackageId(package_id).name
-            copy_to_build('packages/cache/', packages_dir + '/' + package_name + '/' + package_id + '.tar.xz')
+            copy_to_build(
+                'packages/cache/',
+                f'{packages_dir}/{package_name}/{package_id}.tar.xz',
+            )
+
 
         # Copy across gen_extra if it exists
         if os.path.exists('gen_extra'):
@@ -808,7 +826,7 @@ def make_installer_docker(variant, variant_info, installer_info):
         else:
             make_directory(dest_path('gen_extra'))
 
-        print("Building docker container in " + build_dir)
+        print(f"Building docker container in {build_dir}")
         subprocess.check_call(['docker', 'build', '-t', docker_image_name, build_dir])
 
         print("Building", installer_filename)
@@ -844,14 +862,17 @@ def do_create(tag, build_name, reproducible_artifact_path, commit, variant_argum
     # Variants are sorted for stable ordering.
     for variant in sorted(variant_arguments.keys(), key=lambda k: pkgpanda.util.variant_str(k)):
         variant_name = pkgpanda.util.variant_name(variant)
-        bootstrap_installer_name = '{}installer'.format(pkgpanda.util.variant_prefix(variant))
+        bootstrap_installer_name = f'{pkgpanda.util.variant_prefix(variant)}installer'
         if bootstrap_installer_name not in all_completes:
-            print('WARNING: No installer tree for variant: {}'.format(variant_name))
+            print(f'WARNING: No installer tree for variant: {variant_name}')
         else:
-            with logger.scope("Building installer for variant: {}".format(variant_name)):
+            with logger.scope(f"Building installer for variant: {variant_name}"):
 
                 yield {
-                    'channel_path': 'dcos_generate_config.{}sh'.format(pkgpanda.util.variant_prefix(variant)),
-                    'local_path': make_installer_docker(variant, all_completes[variant],
-                                                        all_completes[bootstrap_installer_name])
+                    'channel_path': f'dcos_generate_config.{pkgpanda.util.variant_prefix(variant)}sh',
+                    'local_path': make_installer_docker(
+                        variant,
+                        all_completes[variant],
+                        all_completes[bootstrap_installer_name],
+                    ),
                 }

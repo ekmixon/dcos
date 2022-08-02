@@ -52,14 +52,17 @@ def swap_active_package(install, repository, package_id, systemd, block_systemd)
     active = install.get_active()
     # TODO(cmaloney): I guarantee there is a better way to write this and
     # I've written the same logic before...
-    packages_by_name = dict()
+    packages_by_name = {}
     for id_str in active:
         pkg_id = PackageId(id_str)
         packages_by_name[pkg_id.name] = pkg_id
 
     new_id = PackageId(package_id)
     if new_id.name not in packages_by_name:
-        raise ValidationError("No package with name {} currently active to swap with.".format(new_id.name))
+        raise ValidationError(
+            f"No package with name {new_id.name} currently active to swap with."
+        )
+
 
     packages_by_name[new_id.name] = new_id
     new_active = list(map(str, packages_by_name.values()))
@@ -180,10 +183,10 @@ def setup(install, repository):
 
     # Check for /opt/mesosphere/install_progress. If found, recover the partial
     # update.
-    if os.path.exists(install_root + "/install_progress"):
+    if os.path.exists(f"{install_root}/install_progress"):
         took_action, msg = install.recover_swap_active()
         if not took_action:
-            print("No recovery performed: {}".format(msg))
+            print(f"No recovery performed: {msg}")
 
 
 def _start_dcos_target(block_systemd):
@@ -194,15 +197,19 @@ def _start_dcos_target(block_systemd):
 
 
 def _get_package_list(package_list_id: str, repository_url: str) -> List[str]:
-    package_list_url = repository_url + '/package_lists/{}.package_list.json'.format(package_list_id)
+    package_list_url = (
+        repository_url + f'/package_lists/{package_list_id}.package_list.json'
+    )
+
     with tempfile.NamedTemporaryFile() as f:
         download(f.name, package_list_url, os.getcwd(), rm_on_error=False)
         package_list = load_json(f.name)
 
     if not isinstance(package_list, list):
-        raise ValidationError('{} should contain a JSON list of packages. Got a {}'.format(
-            package_list_url, type(package_list)
-        ))
+        raise ValidationError(
+            f'{package_list_url} should contain a JSON list of packages. Got a {type(package_list)}'
+        )
+
 
     return package_list
 

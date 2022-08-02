@@ -20,7 +20,7 @@ def assert_package_contents(config: dict, package_contents_dir: str) -> None:
         if file_info['path'].startswith('/'):
             file_path = package_contents_dir + file_info['path']
         else:
-            file_path = package_contents_dir + '/' + file_info['path']
+            file_path = f'{package_contents_dir}/' + file_info['path']
 
         assert os.path.exists(file_path)
         assert file_mode(file_path) == file_info.get('permissions', '0644')
@@ -28,7 +28,7 @@ def assert_package_contents(config: dict, package_contents_dir: str) -> None:
             assert f.read() == (file_info['content'] or '')
 
     # Assert all files in package_contents_dir are mentioned in config.
-    config_files = set(info['path'] for info in config['package'])
+    config_files = {info['path'] for info in config['package']}
     for root, _, files in os.walk(package_contents_dir):
         for filename in files:
             package_filename = os.path.join(root, filename)[len(package_contents_dir):]
@@ -135,12 +135,10 @@ def test_extract_files_containing_late_variables():
         },
         {
             'path': '/quux',
-            'content': '{}quux{}'.format(
-                gen.internals.LATE_BIND_PLACEHOLDER_START,
-                gen.internals.LATE_BIND_PLACEHOLDER_END,
-            ),
+            'content': f'{gen.internals.LATE_BIND_PLACEHOLDER_START}quux{gen.internals.LATE_BIND_PLACEHOLDER_END}',
         },
     ]
+
     assert (
         gen.extract_files_containing_late_variables(regular_config_files + late_config_files) ==
         (late_config_files, regular_config_files)

@@ -29,7 +29,7 @@ else:
     DOCKERFILE_DIR = 'docker/'
     config_dir = '/etc/mesosphere'
     install_root = '/opt/mesosphere'
-    repository_base = install_root + '/packages'
+    repository_base = f'{install_root}/packages'
 
     # Non-windows specific configuration files.
     dcos_config_yaml = 'dcos-config.yaml'
@@ -37,5 +37,8 @@ else:
     cloud_config_yaml = 'cloud-config.yaml'
 
 DCOS_SERVICE_CONFIGURATION_FILE = "dcos-service-configuration.json"
-DCOS_SERVICE_CONFIGURATION_PATH = install_root + "/etc/" + DCOS_SERVICE_CONFIGURATION_FILE
+DCOS_SERVICE_CONFIGURATION_PATH = (
+    f"{install_root}/etc/{DCOS_SERVICE_CONFIGURATION_FILE}"
+)
+
 SYSCTL_SETTING_KEY = "sysctl"

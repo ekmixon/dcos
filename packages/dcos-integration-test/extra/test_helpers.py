@@ -27,8 +27,7 @@ def get_exhibitor_admin_password() -> str:
         return ''
 
     creds = exhibitor_realm.split(':')[1].strip()
-    password = creds.split(',')[0].strip()
-    return password
+    return creds.split(',')[0].strip()
 
 
 def get_expanded_config() -> Any:
@@ -93,34 +92,33 @@ def marathon_test_app_linux(
         container_port = 8080
 
     test_uuid = uuid.uuid4().hex
-    app = copy.deepcopy({
-        'id': app_name_fmt.format(test_uuid),
-        'cpus': 0.1,
-        'mem': 32,
-        'instances': 1,
-        'cmd': '/opt/mesosphere/bin/dcos-shell python '
-               '/opt/mesosphere/active/dcos-integration-test/util/python_test_server.py {}'.format(
-                   # If container port is not defined, then the port is auto-assigned and
-                   # the commandline should reference the port with the marathon built-in
-                   '$PORT0' if container_port is None else container_port),
-        'env': {
-            'DCOS_TEST_UUID': test_uuid,
-            # required for python_test_server.py to run as nobody
-            'HOME': '/'
-        },
-        'healthChecks': [
-            {
-                'protocol': healthcheck_protocol.value,
-                'path': '/ping',
-                'gracePeriodSeconds': 5,
-                'intervalSeconds': 10,
-                'timeoutSeconds': 10,
-                'maxConsecutiveFailures': 120  # ~20 minutes until restarting
-                # killing the container will rarely, if ever, help this application
-                # reach a healthy state, so do not trigger a restart if unhealthy
-            }
-        ],
-    })
+    app = copy.deepcopy(
+        {
+            'id': app_name_fmt.format(test_uuid),
+            'cpus': 0.1,
+            'mem': 32,
+            'instances': 1,
+            'cmd': f"/opt/mesosphere/bin/dcos-shell python /opt/mesosphere/active/dcos-integration-test/util/python_test_server.py {'$PORT0' if container_port is None else container_port}",
+            'env': {
+                'DCOS_TEST_UUID': test_uuid,
+                # required for python_test_server.py to run as nobody
+                'HOME': '/',
+            },
+            'healthChecks': [
+                {
+                    'protocol': healthcheck_protocol.value,
+                    'path': '/ping',
+                    'gracePeriodSeconds': 5,
+                    'intervalSeconds': 10,
+                    'timeoutSeconds': 10,
+                    'maxConsecutiveFailures': 120  # ~20 minutes until restarting
+                    # killing the container will rarely, if ever, help this application
+                    # reach a healthy state, so do not trigger a restart if unhealthy
+                }
+            ],
+        }
+    )
+
     if container_port is not None and \
             healthcheck_protocol == marathon.Healthcheck.MESOS_HTTP:
         app['healthChecks'][0]['port'] = container_port  # type: ignore
@@ -190,50 +188,51 @@ def marathon_test_docker_app(app_name: str, constraints: Any = None) -> tuple:
         (dict, str): 2-Tuple of app definition (dict) and app ID (string)
     """
     test_uuid = uuid.uuid4().hex
-    app = copy.deepcopy({
-        'id': "integration-test-{}-{}".format(app_name, test_uuid),
-        'cpus': 0.5,
-        'mem': 128,
-        'disk': 0,
-        'instances': 1,
-        'healthChecks': [
-            {
-                "gracePeriodSeconds": 90,
-                "ignoreHttp1xx": False,
-                "intervalSeconds": 10,
-                "maxConsecutiveFailures": 3,
-                "portIndex": 0,
-                "timeoutSeconds": 2,
-                "delaySeconds": 15,
-                "protocol": "HTTP",
-                "path": "/",
-                "ipProtocol": "IPv4"
-            }
-        ],
-        'container': {
-            'type': 'DOCKER',
-            'portMappings': [{
-                'containerPort': 80,
-                'hostPort': 0,
-                'protocol': 'tcp',
-                'name': 'http'
-            }],
-            'docker': {
-                'image': "mcr.microsoft.com/dotnet/core/samples:aspnetapp",
-                'forcePullImage': False,
-                'privileged': False,
-            }
-        },
-        "networks": [
-            {
-                "mode": "container/bridge"
-            }
-        ],
-        'upgradeStrategy': {
-            'maximumOverCapacity': 0,
-            'minimumHealthCapacity': 0
-        },
-    })
+    app = copy.deepcopy(
+        {
+            'id': f"integration-test-{app_name}-{test_uuid}",
+            'cpus': 0.5,
+            'mem': 128,
+            'disk': 0,
+            'instances': 1,
+            'healthChecks': [
+                {
+                    "gracePeriodSeconds": 90,
+                    "ignoreHttp1xx": False,
+                    "intervalSeconds": 10,
+                    "maxConsecutiveFailures": 3,
+                    "portIndex": 0,
+                    "timeoutSeconds": 2,
+                    "delaySeconds": 15,
+                    "protocol": "HTTP",
+                    "path": "/",
+                    "ipProtocol": "IPv4",
+                }
+            ],
+            'container': {
+                'type': 'DOCKER',
+                'portMappings': [
+                    {
+                        'containerPort': 80,
+                        'hostPort': 0,
+                        'protocol': 'tcp',
+                        'name': 'http',
+                    }
+                ],
+                'docker': {
+                    'image': "mcr.microsoft.com/dotnet/core/samples:aspnetapp",
+                    'forcePullImage': False,
+                    'privileged': False,
+                },
+            },
+            "networks": [{"mode": "container/bridge"}],
+            'upgradeStrategy': {
+                'maximumOverCapacity': 0,
+                'minimumHealthCapacity': 0,
+            },
+        }
+    )
+
 
     # Add Windows constraint
     app['constraints'] = app.get('constraints', []) + constraints

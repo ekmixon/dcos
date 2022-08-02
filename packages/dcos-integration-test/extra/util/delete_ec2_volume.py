@@ -31,11 +31,8 @@ def _remove_env_vars(*env_vars):
     environ = dict(os.environ)
 
     for env_var in env_vars:
-        try:
+        with contextlib.suppress(KeyError):
             del os.environ[env_var]
-        except KeyError:
-            pass
-
     try:
         yield
     finally:
@@ -108,7 +105,7 @@ def delete_ec2_volume(name, timeout=600):
             region_name=_get_current_aws_region(),
         ).resource('ec2').volumes.filter(Filters=[{'Name': 'tag:Name', 'Values': [name]}]))
 
-    if len(volumes) == 0:
+    if not volumes:
         raise Exception('no volumes found with name {}'.format(name))
     elif len(volumes) > 1:
         raise Exception('multiple volumes found with name {}'.format(name))
@@ -122,5 +119,5 @@ def delete_ec2_volume(name, timeout=600):
 
 
 if __name__ == '__main__':
-    log.info("Deleting volume {}".format(sys.argv[1]))
+    log.info(f"Deleting volume {sys.argv[1]}")
     delete_ec2_volume(sys.argv[1])

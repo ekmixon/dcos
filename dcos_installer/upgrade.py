@@ -178,12 +178,15 @@ def generate_node_upgrade_script(gen_out, installed_cluster_version, serve_dir=S
         'installed_cluster_version': installed_cluster_version,
         'installer_version': installer_version})
 
-    upgrade_script_path = '/upgrade/' + uuid.uuid4().hex
+    upgrade_script_path = f'/upgrade/{uuid.uuid4().hex}'
 
     make_directory(serve_dir + upgrade_script_path)
 
     write_string(serve_dir + upgrade_script_path + '/dcos_node_upgrade.sh', bash_script)
 
-    print("Node upgrade script URL: " + bootstrap_url + upgrade_script_path + '/dcos_node_upgrade.sh')
+    print(
+        f"Node upgrade script URL: {bootstrap_url}{upgrade_script_path}/dcos_node_upgrade.sh"
+    )
+
 
     return 0

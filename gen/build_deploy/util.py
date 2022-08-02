@@ -34,38 +34,38 @@ def do_bundle_onprem(gen_out, output_dir):
     assert output_dir is not None
     assert output_dir
     assert output_dir[-1] != '/'
-    output_dir = output_dir + '/'
+    output_dir = f'{output_dir}/'
 
     # Copy generated artifacts
     for filename in gen_out.channel_artifacts + gen_out.stable_artifacts:
         copy_makedirs(filename, output_dir + filename)
 
     # Write an index of the cluster packages
-    write_json(output_dir + 'cluster-package-info.json', gen_out.cluster_packages)
+    write_json(f'{output_dir}cluster-package-info.json', gen_out.cluster_packages)
 
     # Write the bootstrap id
-    write_string(output_dir + 'bootstrap.latest', gen_out.arguments['bootstrap_id'])
+    write_string(
+        f'{output_dir}bootstrap.latest', gen_out.arguments['bootstrap_id']
+    )
+
 
     # Write cluster package list ID
-    write_string(output_dir + 'cluster-package-list.latest', gen_out.arguments['cluster_package_list_id'])
+    write_string(
+        f'{output_dir}cluster-package-list.latest',
+        gen_out.arguments['cluster_package_list_id'],
+    )
 
 
 def variant_str(variant):
     """Return a string representation of variant."""
-    if variant is None:
-        return ''
-    return variant
+    return '' if variant is None else variant
 
 
 def variant_name(variant):
     """Return a human-readable string representation of variant."""
-    if variant is None:
-        return '<default>'
-    return variant
+    return '<default>' if variant is None else variant
 
 
 def variant_prefix(variant):
     """Return a filename prefix for variant."""
-    if variant is None:
-        return ''
-    return variant + '.'
+    return '' if variant is None else f'{variant}.'

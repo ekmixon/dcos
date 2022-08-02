@@ -73,7 +73,7 @@ def zk_connect():
     if zk_user and zk_secret:
         default_acl = [make_digest_acl(zk_user, zk_secret, all=True)]
         scheme = 'digest'
-        credential = "{}:{}".format(zk_user, zk_secret)
+        credential = f"{zk_user}:{zk_secret}"
         auth_data = [(scheme, credential)]
     zk = KazooClient(
         hosts=ZK_SERVER,
@@ -89,15 +89,15 @@ def zk_connect():
 
 @contextmanager
 def zk_cluster_lock(zk: KazooClient, name: str, timeout: int = 30) -> Generator:
-    lock = zk.Lock("{}/{}".format(ZK_PREFIX, name), socket.gethostname())
+    lock = zk.Lock(f"{ZK_PREFIX}/{name}", socket.gethostname())
     try:
-        print("Acquiring cluster lock '{}'".format(name))
+        print(f"Acquiring cluster lock '{name}'")
         lock.acquire(blocking=True, timeout=timeout)
     except (ConnectionLoss, SessionExpiredError) as e:
-        print("Failed to acquire cluster lock: {}".format(e.__class__.__name__))
+        print(f"Failed to acquire cluster lock: {e.__class__.__name__}")
         raise e
     except LockTimeout as e:
-        print("Failed to acquire cluster lock in {} seconds".format(timeout))
+        print(f"Failed to acquire cluster lock in {timeout} seconds")
         raise e
     else:
         print("ZooKeeper lock acquired.")
@@ -110,7 +110,7 @@ def zk_cluster_lock(zk: KazooClient, name: str, timeout: int = 30) -> Generator:
 
 
 def zk_flag_set(zk: KazooClient, name: str, value: str):
-    path = "{}/{}".format(ZK_PREFIX, name)
+    path = f"{ZK_PREFIX}/{name}"
     data = value.encode('utf-8')
     try:
         zk.set(path, data)
@@ -119,26 +119,26 @@ def zk_flag_set(zk: KazooClient, name: str, value: str):
 
 
 def zk_flag_get(zk: KazooClient, name: str) -> str:
-    path = "{}/{}".format(ZK_PREFIX, name)
+    path = f"{ZK_PREFIX}/{name}"
     try:
         value, info = zk.get(path)
         return value.decode('utf-8')
     except NoNodeError:
         return ""
     except Exception as e:
-        print("Failed to read {}: {}".format(path, e))
+        print(f"Failed to read {path}: {e}")
         raise e
 
 
 def exec_cmd(cmd: str, check=False) -> subprocess.CompletedProcess:
-    print("Executing: {}".format(cmd))
-    process = subprocess.run(
+    print(f"Executing: {cmd}")
+    return subprocess.run(
         shlex.split(cmd),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         encoding='utf-8',
-        check=check)
-    return process
+        check=check,
+    )
 
 
 def wait_calico_libnetwork_ready():
@@ -160,7 +160,7 @@ def wait_calico_libnetwork_ready():
         check_request = "GET /{} HTTP/1.0\r\n\r\n".format(check_path)
         sock.send(check_request.encode())
         ret = sock.recv(1024).decode()
-        return True if "HTTP/1.0 200 OK" in ret else False
+        return "HTTP/1.0 200 OK" in ret
 
     @retrying.retry(
         wait_fixed=5 * 1000,
@@ -193,7 +193,7 @@ def reload_docker_daemon():
         with open(docker_pid_file, "r") as f:
             docker_pid = int(f.read())
         try:
-            print("Attempting reload for docker daemon with pid={}".format(docker_pid))
+            print(f"Attempting reload for docker daemon with pid={docker_pid}")
             os.kill(docker_pid, signal.SIGHUP)
             return
         except OSError:
@@ -209,14 +209,14 @@ def reload_docker_daemon():
 
 
 def is_docker_cluster_store_configured():
-    docker_info_cmd = "{} info".format(DOCKER_BIN)
+    docker_info_cmd = f"{DOCKER_BIN} info"
     p = exec_cmd(docker_info_cmd)
     docker_infos = p.stdout.strip().split('\n')
     for item in docker_infos:
         # An example of cluster store listed by `docker info`:
         # Cluster Store: etcd://master.dcos.thisdcos.directory:2379
         if item.strip().startswith(CLUSTER_STORE_DOCKER_INFO_PREFIX):
-            print("Found cluster store config: {}".format(item))
+            print(f"Found cluster store config: {item}")
             return True
     return False
 
@@ -334,11 +334,15 @@ def config_docker_cluster_store():
 
 
 def is_docker_calico_network_available(retries: int = 5) -> bool:
-    print("Checking if '{}' docker network already exists".format(
-        CALICO_DOCKER_NETWORK_NAME))
+    print(
+        f"Checking if '{CALICO_DOCKER_NETWORK_NAME}' docker network already exists"
+    )
+
     while retries > 0:
-        docker_inspect_cmd = "{} network inspect {}".format(
-            DOCKER_BIN, CALICO_DOCKER_NETWORK_NAME)
+        docker_inspect_cmd = (
+            f"{DOCKER_BIN} network inspect {CALICO_DOCKER_NETWORK_NAME}"
+        )
+
         p = exec_cmd(docker_inspect_cmd, check=False)
         if p.returncode == 0:
             print("Docker network exists")
@@ -346,15 +350,11 @@ def is_docker_calico_network_available(retries: int = 5) -> bool:
 
         # Make sure that's an expected error
         if 'No such network' not in p.stderr:
-            raise Exception("Unexpected docker error: {}".format(p.stderr))
+            raise Exception(f"Unexpected docker error: {p.stderr}")
 
-        # Don't immediately fail if the network does not exist, since it might
-        # take a few seconds for the network information to be propagated to all
-        # the docker nodes in the cluster.
-        if retries > 0:
-            print("Docker network not found, {} retries left".format(retries))
-            retries -= 1
-            time.sleep(1)
+        print(f"Docker network not found, {retries} retries left")
+        retries -= 1
+        time.sleep(1)
 
     print("Docker network does not exist")
     return False
@@ -365,15 +365,11 @@ def create_calico_docker_network():
     # (using zookeeper) and letting only one agent execute the logic.
     zk = zk_connect()
     with zk_cluster_lock(zk, "mutex"):
-        net_wait_delay = 5
-
         # Check if the network was (presumably) already created by another
         # agent in the cluster. If that's the case we have to increase the time
         # we wait for the docker network to appear in order to validate it.
         created_by = zk_flag_get(zk, "created_by")
-        if created_by:
-            net_wait_delay = 120
-
+        net_wait_delay = 120 if created_by else 5
         # Docker takes some time to propagate the network information to all the
         # agents. Depending on the cluster size this might even take up to a
         # minute. We have to be patient and wait for the network to appear,
@@ -383,26 +379,27 @@ def create_calico_docker_network():
             return
         else:
             if created_by:
-                raise Exception("The network should have been created by {}, "
-                                "but did not appear on time".format(created_by))
+                raise Exception(
+                    f"The network should have been created by {created_by}, but did not appear on time"
+                )
+
 
         subnet = os.getenv("CALICO_IPV4POOL_CIDR")
         if not subnet:
             raise Exception(
                 "Environment variable CALICO_IPV4POOL_CIDR is not set")
 
-        net_create_cmd = "{} network create --driver calico " \
-            "--opt org.projectcalico.profile={} " \
-            "--ipam-driver calico-ipam --subnet={} {}".format(
-                DOCKER_BIN, CALICO_DOCKER_NETWORK_NAME, subnet,
-                CALICO_DOCKER_NETWORK_NAME)
+        net_create_cmd = f"{DOCKER_BIN} network create --driver calico --opt org.projectcalico.profile={CALICO_DOCKER_NETWORK_NAME} --ipam-driver calico-ipam --subnet={subnet} {CALICO_DOCKER_NETWORK_NAME}"
+
         p = exec_cmd(net_create_cmd, check=False)
         if p.returncode != 0:
             # here we double-check the existence of calico network in case the
             # calico libnetwork plugin from other nodes creates it concurrently.
             if "already exists" in p.stderr:
-                print("calico docker network '{}' was already installed".format(
-                    CALICO_DOCKER_NETWORK_NAME))
+                print(
+                    f"calico docker network '{CALICO_DOCKER_NETWORK_NAME}' was already installed"
+                )
+
                 return
             raise Exception("Create calico network failed for {}", p.stderr)
 
@@ -410,8 +407,10 @@ def create_calico_docker_network():
         if not is_docker_calico_network_available(5):
             raise Exception("Could not create docker network")
 
-        print("calico docker is created, name:{}, subnet:{}".format(
-            CALICO_DOCKER_NETWORK_NAME, subnet))
+        print(
+            f"calico docker is created, name:{CALICO_DOCKER_NETWORK_NAME}, subnet:{subnet}"
+        )
+
 
         # Set a flag in ZK denoting that we are the ones created the
         # calico network.

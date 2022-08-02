@@ -37,8 +37,8 @@ class BuildError(Exception):
 class DockerCmd:
 
     def __init__(self):
-        self.volumes = dict()
-        self.environment = dict()
+        self.volumes = {}
+        self.environment = {}
         self.container = str()
 
     def run(self, name, cmd):
@@ -48,7 +48,7 @@ class DockerCmd:
             )
         )
 
-        docker = ["docker", "run", "--name={}".format(container_name)]
+        docker = ["docker", "run", f"--name={container_name}"]
 
         if is_windows:
             # Default number of processes on Windows is 1, so bumping up to use all of them.
@@ -85,18 +85,21 @@ def get_variants_from_filesystem(directory, extension):
 
         # Empty name variant shouldn't have a `.` following it
         if variant == '.':
-            raise BuildError("Invalid filename {}. The \"default\" variant file should be just {}".format(
-                filename, extension))
+            raise BuildError(
+                f'Invalid filename {filename}. The \"default\" variant file should be just {extension}'
+            )
+
 
         # Empty / default variant is represented as 'None'.
         if variant == '':
             variant = None
-        else:
-            # Should be foo. since we've moved the extension.
-            if variant[-1] != '.':
-                raise BuildError("Invalid variant filename {}. Expected a '.' separating the "
-                                 "variant name and extension '{}'.".format(filename, extension))
+        elif variant[-1] == '.':
             variant = variant[:-1]
+
+        else:
+            raise BuildError(
+                f"Invalid variant filename {filename}. Expected a '.' separating the variant name and extension '{extension}'."
+            )
 
         results.add(variant)
 
@@ -107,9 +110,10 @@ def get_src_fetcher(src_info, cache_dir, working_directory):
     try:
         kind = src_info['kind']
         if kind not in pkgpanda.build.src_fetchers.all_fetchers:
-            raise ValidationError("No known way to catch src with kind '{}'. Known kinds: {}".format(
-                kind,
-                pkgpanda.src_fetchers.all_fetchers.keys()))
+            raise ValidationError(
+                f"No known way to catch src with kind '{kind}'. Known kinds: {pkgpanda.src_fetchers.all_fetchers.keys()}"
+            )
+
 
         args = {
             'src_info': src_info,
@@ -121,7 +125,7 @@ def get_src_fetcher(src_info, cache_dir, working_directory):
 
         return pkgpanda.build.src_fetchers.all_fetchers[kind](**args)
     except ValidationError as ex:
-        raise BuildError("Validation error when fetching sources for package: {}".format(ex))
+        raise BuildError(f"Validation error when fetching sources for package: {ex}")
 
 
 class TreeInfo:
@@ -131,8 +135,9 @@ class TreeInfo:
     def __init__(self, treeinfo_dict):
         if treeinfo_dict.keys() > self.ALLOWED_TREEINFO_KEYS:
             raise BuildError(
-                "treeinfo can only include the keys {}. Found {}".format(
-                    self.ALLOWED_TREEINFO_KEYS, treeinfo_dict.keys()))
+                f"treeinfo can only include the keys {self.ALLOWED_TREEINFO_KEYS}. Found {treeinfo_dict.keys()}"
+            )
+
 
         self.excludes = set(self._get_package_list(treeinfo_dict, 'exclude'))
         self.core_package_list = set(self._get_package_list(treeinfo_dict, 'core_package_list', self.excludes))
@@ -142,7 +147,7 @@ class TreeInfo:
             self.excludes))
 
         # List of mandatory package variants to include in the buildinfo.
-        self.variants = treeinfo_dict.get('variants', dict())
+        self.variants = treeinfo_dict.get('variants', {})
         if not isinstance(self.variants, dict):
             raise BuildError("treeinfo variants must be a dictionary of package name to variant name")
 
@@ -153,24 +158,29 @@ class TreeInfo:
         If key isn't present in treeinfo_dict, an empty list is returned.
 
         """
-        excludes = excludes or list()
-        package_list = treeinfo_dict.get(key, list())
+        excludes = excludes or []
+        package_list = treeinfo_dict.get(key, [])
 
         # Validate package list.
         if not isinstance(package_list, list):
-            raise BuildError("{} must be either null (meaning don't use) or a list of package names.".format(key))
+            raise BuildError(
+                f"{key} must be either null (meaning don't use) or a list of package names."
+            )
+
         for package_name in package_list:
             if not isinstance(package_name, str):
-                raise BuildError("{} must be a list of strings. Found a {} with the value: {}".format(
-                    key, type(package_name), package_name))
+                raise BuildError(
+                    f"{key} must be a list of strings. Found a {type(package_name)} with the value: {package_name}"
+                )
+
 
             try:
                 PackageId.validate_name(package_name)
             except ValidationError as ex:
-                raise BuildError("Invalid package name in {}: {}".format(key, package_name)) from ex
+                raise BuildError(f"Invalid package name in {key}: {package_name}") from ex
 
             if package_name in excludes:
-                raise BuildError("Package found in both exclude and {}: {}".format(key, package_name))
+                raise BuildError(f"Package found in both exclude and {key}: {package_name}")
 
         return package_list
 
@@ -201,12 +211,16 @@ class PackageSet:
         # Validate bootstrap packages are a subset of all packages.
         for package_name, variant in self.bootstrap_packages:
             if (package_name, variant) not in self.all_packages:
-                raise BuildError("Bootstrap package {} (variant {}) not found in set of all packages".format(
-                    package_name, pkgpanda.util.variant_name(variant)))
+                raise BuildError(
+                    f"Bootstrap package {package_name} (variant {pkgpanda.util.variant_name(variant)}) not found in set of all packages"
+                )
 
     @staticmethod
     def package_tuples_with_dependencies(package_names, treeinfo, package_store):
-        package_tuples = set((name, treeinfo.variants.get(name)) for name in set(package_names))
+        package_tuples = {
+            (name, treeinfo.variants.get(name)) for name in set(package_names)
+        }
+
         to_visit = list(package_tuples)
         while to_visit:
             package_tuple = to_visit.pop()
@@ -226,27 +240,21 @@ class PackageSet:
             treeinfo_variant = treeinfo.variants.get(package_name)
             if variant != treeinfo_variant:
                 raise BuildError(
-                    "package {} is supposed to have variant {} included in the tree according to the treeinfo, "
-                    "but variant {} was found.".format(
-                        package_name,
-                        pkgpanda.util.variant_name(treeinfo_variant),
-                        pkgpanda.util.variant_name(variant),
-                    )
+                    f"package {package_name} is supposed to have variant {pkgpanda.util.variant_name(treeinfo_variant)} included in the tree according to the treeinfo, but variant {pkgpanda.util.variant_name(variant)} was found."
                 )
+
 
         # Validate that all needed packages are built and not excluded by treeinfo.
         for package_name, variant in package_tuples:
             if (package_name, variant) not in package_store.packages:
                 raise BuildError(
-                    "package {} variant {} is needed (explicitly requested or as a requires) "
-                    "but is not in the set of built packages.".format(
-                        package_name,
-                        pkgpanda.util.variant_name(variant),
-                    )
+                    f"package {package_name} variant {pkgpanda.util.variant_name(variant)} is needed (explicitly requested or as a requires) but is not in the set of built packages."
                 )
+
             if package_name in treeinfo.excludes:
-                raise BuildError("package {} is needed (explicitly requested or as a requires) "
-                                 "but is excluded according to the treeinfo.json.".format(package_name))
+                raise BuildError(
+                    f"package {package_name} is needed (explicitly requested or as a requires) but is excluded according to the treeinfo.json."
+                )
 
 
 class PackageStore:
@@ -257,30 +265,32 @@ class PackageStore:
         self._packages_dir = packages_dir.rstrip('/')
 
         # Load all possible packages, making a dictionary from (name, variant) -> buildinfo
-        self._packages = dict()
-        self._packages_by_name = dict()
-        self._package_folders = dict()
+        self._packages = {}
+        self._packages_by_name = {}
+        self._package_folders = {}
 
         # Load an upstream if one exists
         # TODO(cmaloney): Allow upstreams to have upstreams
-        self._package_cache_dir = self._packages_dir + "/cache/packages"
-        self._upstream_dir = self._packages_dir + "/cache/upstream/checkout"
+        self._package_cache_dir = f"{self._packages_dir}/cache/packages"
+        self._upstream_dir = f"{self._packages_dir}/cache/upstream/checkout"
         self._upstream = None
-        self._upstream_package_dir = self._upstream_dir + "/packages"
+        self._upstream_package_dir = f"{self._upstream_dir}/packages"
         # TODO(cmaloney): Make it so the upstream directory can be kept around
         remove_directory(self._upstream_dir)
-        upstream_config = self._packages_dir + '/upstream.json'
+        upstream_config = f'{self._packages_dir}/upstream.json'
         if os.path.exists(upstream_config):
             try:
                 self._upstream = get_src_fetcher(
                     load_optional_json(upstream_config),
-                    self._packages_dir + '/cache/upstream',
-                    packages_dir)
+                    f'{self._packages_dir}/cache/upstream',
+                    packages_dir,
+                )
+
                 self._upstream.checkout_to(self._upstream_dir)
-                if os.path.exists(self._upstream_package_dir + "/upstream.json"):
+                if os.path.exists(f"{self._upstream_package_dir}/upstream.json"):
                     raise Exception("Support for upstreams which have upstreams is not currently implemented")
             except Exception as ex:
-                raise BuildError("Error fetching upstream: {}".format(ex))
+                raise BuildError(f"Error fetching upstream: {ex}")
 
         # Iterate through the packages directory finding all packages. Note this package dir comes
         # first, then we ignore duplicate definitions of the same package
@@ -290,7 +300,7 @@ class PackageStore:
 
         for directory in package_dirs:
             for name in os.listdir(directory):
-                package_folder = directory + '/' + name
+                package_folder = f'{directory}/{name}'
 
                 # Ignore files / non-directories
                 if not os.path.isdir(package_folder):
@@ -311,7 +321,7 @@ class PackageStore:
                 # Search the directory for buildinfo.json files, record the variants
                 for variant in get_variants_from_filesystem(package_folder, 'buildinfo.json'):
                     # Only adding the default dictionary once we know we have a package.
-                    self._packages_by_name.setdefault(name, dict())
+                    self._packages_by_name.setdefault(name, {})
 
                     buildinfo = load_buildinfo(package_folder, variant)
                     self._packages[(name, variant)] = buildinfo
@@ -326,42 +336,49 @@ class PackageStore:
         return self._package_folders[name]
 
     def get_bootstrap_cache_dir(self):
-        return self._packages_dir + "/cache/bootstrap"
+        return f"{self._packages_dir}/cache/bootstrap"
 
     def get_complete_cache_dir(self):
-        return self._packages_dir + "/cache/complete"
+        return f"{self._packages_dir}/cache/complete"
 
     def get_buildinfo(self, name, variant):
         return self._packages[(name, variant)]
 
     def get_last_complete_set(self, variants):
         def get_last_complete(variant):
-            complete_latest = (
-                self.get_complete_cache_dir() + '/' + pkgpanda.util.variant_prefix(variant) + 'complete.latest.json')
+            complete_latest = f'{self.get_complete_cache_dir()}/{pkgpanda.util.variant_prefix(variant)}complete.latest.json'
+
             if not os.path.exists(complete_latest):
-                raise BuildError("No last complete found for variant {}. Expected to find {} to match "
-                                 "{}".format(pkgpanda.util.variant_name(variant), complete_latest,
-                                             pkgpanda.util.variant_prefix(variant) + 'treeinfo.json'))
+                raise BuildError(
+                    (
+                        "No last complete found for variant {}. Expected to find {} to match "
+                        "{}".format(
+                            pkgpanda.util.variant_name(variant),
+                            complete_latest,
+                            f'{pkgpanda.util.variant_prefix(variant)}treeinfo.json',
+                        )
+                    )
+                )
+
             return load_json(complete_latest)
 
         result = {}
-        if variants is None:
-            # Get all defined variants.
-            requested_variants = self.list_trees()
-        else:
-            requested_variants = variants
+        requested_variants = self.list_trees() if variants is None else variants
         for variant in requested_variants:
             result[variant] = get_last_complete(variant)
         return result
 
     def get_last_build_filename(self, name, variant):
-        return self.get_package_cache_folder(name) + '/{}latest'.format(pkgpanda.util.variant_prefix(variant))
+        return (
+            self.get_package_cache_folder(name)
+            + f'/{pkgpanda.util.variant_prefix(variant)}latest'
+        )
 
     def get_package_path(self, pkg_id):
-        return self.get_package_cache_folder(pkg_id.name) + '/{}.tar.xz'.format(pkg_id)
+        return self.get_package_cache_folder(pkg_id.name) + f'/{pkg_id}.tar.xz'
 
     def get_package_cache_folder(self, name):
-        directory = self._package_cache_dir + '/' + name
+        directory = f'{self._package_cache_dir}/{name}'
         make_directory(directory)
         return directory
 
@@ -395,15 +412,15 @@ class PackageStore:
             return False
 
         # TODO(cmaloney): Use storage providers to download instead of open coding.
-        pkg_path = "{}.tar.xz".format(pkg_id)
+        pkg_path = f"{pkg_id}.tar.xz"
         url = self._repository_url + '/packages/{0}/{1}'.format(pkg_id.name, pkg_path)
         try:
             directory = self.get_package_cache_folder(pkg_id.name)
             # TODO(cmaloney): Move to some sort of logging mechanism?
             print("Attempting to download", pkg_id, "from", url, "to", directory)
-            download_atomic(directory + '/' + pkg_path, url, directory)
-            assert os.path.exists(directory + '/' + pkg_path)
-            return directory + '/' + pkg_path
+            download_atomic(f'{directory}/{pkg_path}', url, directory)
+            assert os.path.exists(f'{directory}/{pkg_path}')
+            return f'{directory}/{pkg_path}'
         except FetchError:
             return False
 
@@ -412,17 +429,20 @@ class PackageStore:
             return False
 
         try:
-            bootstrap_name = '{}.bootstrap.tar.xz'.format(bootstrap_id)
-            active_name = '{}.active.json'.format(bootstrap_id)
+            bootstrap_name = f'{bootstrap_id}.bootstrap.tar.xz'
+            active_name = f'{bootstrap_id}.active.json'
             # TODO(cmaloney): Use storage providers to download instead of open coding.
-            bootstrap_url = self._repository_url + '/bootstrap/' + bootstrap_name
-            active_url = self._repository_url + '/bootstrap/' + active_name
+            bootstrap_url = f'{self._repository_url}/bootstrap/{bootstrap_name}'
+            active_url = f'{self._repository_url}/bootstrap/{active_name}'
             print("Attempting to download", bootstrap_name, "from", bootstrap_url)
             dest_dir = self.get_bootstrap_cache_dir()
             # Normalize to no trailing slash for repository_url
-            download_atomic(dest_dir + '/' + bootstrap_name, bootstrap_url, self._packages_dir)
+            download_atomic(
+                f'{dest_dir}/{bootstrap_name}', bootstrap_url, self._packages_dir
+            )
+
             print("Attempting to download", active_name, "from", active_url)
-            download_atomic(dest_dir + '/' + active_name, active_url, self._packages_dir)
+            download_atomic(f'{dest_dir}/{active_name}', active_url, self._packages_dir)
             return True
         except FetchError:
             return False
@@ -448,9 +468,10 @@ def hash_files_in_folder(directory):
     This is split out from calculating the whole folder hash so that the
     behavior in different walking corner cases can be more easily tested.
     """
-    assert not directory.startswith('/'), \
-        "For the hash to be reproducible on other machines relative paths must always be used. " \
-        "Got path: {}".format(directory)
+    assert not directory.startswith(
+        '/'
+    ), f"For the hash to be reproducible on other machines relative paths must always be used. Got path: {directory}"
+
     directory = directory.rstrip('/')
     file_hash_dict = {}
     # TODO(cmaloney): Disallow symlinks as they're hard to hash, people can symlink / copy in their
@@ -458,7 +479,7 @@ def hash_files_in_folder(directory):
     for root, dirs, filenames in os.walk(directory):
         assert not root.startswith('/')
         for name in filenames:
-            path = root + '/' + name
+            path = f'{root}/{name}'
             base = path[len(directory) + 1:]
             file_hash_dict[base] = pkgpanda.util.sha1(path)
 
@@ -466,10 +487,7 @@ def hash_files_in_folder(directory):
         # or folders inside of it. If it contains nothing, it wouldn't be picked up but the existence
         # is important, so added it with a value for it's hash not-makeable via sha1 (empty string).
         if len(filenames) == 0 and len(dirs) == 0:
-            path = root[len(directory) + 1:]
-            # Empty path means it is the root directory, in which case we want no entries, not a
-            # single entry "": ""
-            if path:
+            if path := root[len(directory) + 1 :]:
                 file_hash_dict[root[len(directory) + 1:]] = ""
 
     return file_hash_dict
@@ -484,8 +502,14 @@ def as_cwd(path):
 
 
 def hash_folder_abs(directory, work_dir):
-    assert directory.startswith(work_dir), "directory must be inside work_dir: {} {}".format(directory, work_dir)
-    assert not work_dir[-1] == '/', "This code assumes no trailing slash on the work_dir"
+    assert directory.startswith(
+        work_dir
+    ), f"directory must be inside work_dir: {directory} {work_dir}"
+
+    assert (
+        work_dir[-1] != '/'
+    ), "This code assumes no trailing slash on the work_dir"
+
 
     with as_cwd(work_dir):
         return hash_folder(directory[len(work_dir) + 1:])
@@ -500,32 +524,28 @@ def hash_folder(directory):
 def load_optional_json(filename):
     try:
         with open(filename) as f:
-            text = f.read().strip()
-            if text:
-                return json.loads(text)
-            return {}
+            return json.loads(text) if (text := f.read().strip()) else {}
     except OSError as ex:
-        raise BuildError("Failed to open JSON file {}: {}".format(filename, ex))
+        raise BuildError(f"Failed to open JSON file {filename}: {ex}")
     except ValueError as ex:
-        raise BuildError("Unable to parse json in {}: {}".format(filename, ex))
+        raise BuildError(f"Unable to parse json in {filename}: {ex}")
 
 
 def load_config_variant(directory, variant, extension):
     assert directory[-1] != '/'
-    return load_optional_json(directory + '/' + pkgpanda.util.variant_prefix(variant) + extension)
+    return load_optional_json(
+        f'{directory}/{pkgpanda.util.variant_prefix(variant)}{extension}'
+    )
 
 
 def load_buildinfo(path, variant):
     buildinfo = load_config_variant(path, variant, 'buildinfo.json')
 
-    # Fill in default / guaranteed members so code everywhere doesn't have to guard around it.
-    default_build_script = 'build'
-    if is_windows:
-        default_build_script = 'build.ps1'
+    default_build_script = 'build.ps1' if is_windows else 'build'
     buildinfo.setdefault('build_script', pkgpanda.util.variant_prefix(variant) + default_build_script)
     buildinfo.setdefault('docker', 'dcos/dcos-builder:dcos-builder_dockerdir-latest')
-    buildinfo.setdefault('environment', dict())
-    buildinfo.setdefault('requires', list())
+    buildinfo.setdefault('environment', {})
+    buildinfo.setdefault('requires', [])
     buildinfo.setdefault('state_directory', False)
 
     return buildinfo
@@ -533,7 +553,7 @@ def load_buildinfo(path, variant):
 
 def make_bootstrap_tarball(package_store, packages, variant):
     # Convert filenames to package ids
-    pkg_ids = list()
+    pkg_ids = []
     for pkg_path in packages:
         # Get the package id from the given package path
         filename = os.path.basename(pkg_path)
@@ -548,7 +568,7 @@ def make_bootstrap_tarball(package_store, packages, variant):
     bootstrap_id = hash_checkout(pkg_ids)
     latest_name = "{}/{}bootstrap.latest".format(bootstrap_cache_dir, pkgpanda.util.variant_prefix(variant))
 
-    output_name = bootstrap_cache_dir + '/' + bootstrap_id + '.'
+    output_name = f'{bootstrap_cache_dir}/{bootstrap_id}.'
 
     # bootstrap tarball = <sha1 of packages in tarball>.bootstrap.tar.xz
     bootstrap_name = "{}bootstrap.tar.xz".format(output_name)
@@ -634,13 +654,16 @@ def make_bootstrap_tarball(package_store, packages, variant):
 def build_tree_variants(package_store, mkbootstrap):
     """ Builds all possible tree variants in a given package store
     """
-    result = dict()
     tree_variants = get_variants_from_filesystem(package_store.packages_dir, 'treeinfo.json')
     if len(tree_variants) == 0:
-        raise Exception('No treeinfo.json can be found in {}'.format(package_store.packages_dir))
-    for variant in tree_variants:
-        result[variant] = pkgpanda.build.build_tree(package_store, mkbootstrap, variant)
-    return result
+        raise Exception(
+            f'No treeinfo.json can be found in {package_store.packages_dir}'
+        )
+
+    return {
+        variant: pkgpanda.build.build_tree(package_store, mkbootstrap, variant)
+        for variant in tree_variants
+    }
 
 
 def build_tree(package_store, mkbootstrap, tree_variants):
@@ -656,7 +679,7 @@ def build_tree(package_store, mkbootstrap, tree_variants):
 
     # TODO(cmaloney): Make it so when we're building a treeinfo which has a
     # explicit package list we don't build all the other packages.
-    build_order = list()
+    build_order = []
     visited = set()
     built = set()
 
@@ -720,9 +743,9 @@ def build_tree(package_store, mkbootstrap, tree_variants):
         for package_set in package_sets:
             visit_packages(package_set.all_packages)
 
-    built_packages = dict()
+    built_packages = {}
     for (name, variant) in build_order:
-        built_packages.setdefault(name, dict())
+        built_packages.setdefault(name, {})
 
         # Run the build, store the built package path for later use.
         # TODO(cmaloney): Only build the requested variants, rather than all variants.
@@ -735,7 +758,7 @@ def build_tree(package_store, mkbootstrap, tree_variants):
     # Build bootstrap tarballs for all tree variants.
     def make_bootstrap(package_set):
         with logger.scope("Making bootstrap variant: {}".format(pkgpanda.util.variant_name(package_set.variant))):
-            package_paths = list()
+            package_paths = []
             for name, pkg_variant in package_set.bootstrap_packages:
                 package_paths.append(built_packages[name][pkg_variant])
 
@@ -757,8 +780,10 @@ def build_tree(package_store, mkbootstrap, tree_variants):
                 load_string(package_store.get_last_build_filename(*pkg_tuple))
                 for pkg_tuple in package_set.all_packages)}
         write_json(
-            complete_cache_dir + '/' + pkgpanda.util.variant_prefix(package_set.variant) + 'complete.latest.json',
-            info)
+            f'{complete_cache_dir}/{pkgpanda.util.variant_prefix(package_set.variant)}complete.latest.json',
+            info,
+        )
+
         results[package_set.variant] = info
 
     return results
@@ -766,22 +791,22 @@ def build_tree(package_store, mkbootstrap, tree_variants):
 
 def assert_no_duplicate_keys(lhs, rhs):
     if len(lhs.keys() & rhs.keys()) != 0:
-        print("ASSERTION FAILED: Duplicate keys between {} and {}".format(lhs, rhs))
+        print(f"ASSERTION FAILED: Duplicate keys between {lhs} and {rhs}")
         assert len(lhs.keys() & rhs.keys()) == 0
 
 
 # Find all build variants and build them
 def build_package_variants(package_store, name, clean_after_build=True, recursive=False):
-    # Find the packages dir / root of the packages tree, and create a PackageStore
-    results = dict()
-    for variant in package_store.packages_by_name[name].keys():
-        results[variant] = build(
+    return {
+        variant: build(
             package_store,
             name,
             variant,
             clean_after_build=clean_after_build,
-            recursive=recursive)
-    return results
+            recursive=recursive,
+        )
+        for variant in package_store.packages_by_name[name].keys()
+    }
 
 
 class IdBuilder():
@@ -793,7 +818,7 @@ class IdBuilder():
 
     def _check_no_key(self, field):
         if field in self._buildinfo:
-            raise BuildError("Key {} shouldn't be in buildinfo, but was".format(field))
+            raise BuildError(f"Key {field} shouldn't be in buildinfo, but was")
 
     def add(self, field, value):
         self._check_no_key(field)
@@ -818,17 +843,14 @@ class IdBuilder():
         self._buildinfo[field] = new_value
 
     def get_build_ids(self):
-        # If any keys are left in the buildinfo, error that there were unused keys
-        remaining_keys = self._start_keys - self._taken
-
-        if remaining_keys:
-            raise BuildError("ERROR: Unknown keys {} in buildinfo.json".format(remaining_keys))
+        if remaining_keys := self._start_keys - self._taken:
+            raise BuildError(f"ERROR: Unknown keys {remaining_keys} in buildinfo.json")
 
         return self._buildinfo
 
 
 def build(package_store: PackageStore, name: str, variant, clean_after_build, recursive=False):
-    msg = "Building package {} variant {}".format(name, pkgpanda.util.variant_name(variant))
+    msg = f"Building package {name} variant {pkgpanda.util.variant_name(variant)}"
     with logger.scope(msg):
         return _build(package_store, name, variant, clean_after_build, recursive)
 

@@ -51,9 +51,7 @@ def setup_logging():
 class TestHTTPRequestHandler(BaseHTTPRequestHandler):
     def address_string(self):
         address = super().address_string()
-        if address.startswith("::ffff:"):
-            return address[7:]
-        return address
+        return address[7:] if address.startswith("::ffff:") else address
 
     def log_message(self, fmt, *args):
         """Override logging settings of base class
@@ -124,7 +122,7 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
             TEST_DATA_CACHE = self.rfile.read(int(self.headers['Content-Length'])).decode()
         self._send_reply(TEST_DATA_CACHE)
 
-    def parse_POST_headers(self):  # noqa: ignore=N802
+    def parse_POST_headers(self):    # noqa: ignore=N802
         """Parse request's POST headers in utf8 aware way
 
         Returns:
@@ -133,7 +131,7 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
         length = int(self.headers['Content-Length'])
         field_data = self.rfile.read(length).decode('utf-8')
         fields = urllib.parse.parse_qs(field_data)
-        logging.debug("Request's POST arguments: {}".format(fields))
+        logging.debug(f"Request's POST arguments: {fields}")
         return fields
 
     def _verify_path_your_ip_args(self, fields):
@@ -190,18 +188,24 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
                                         and the request that initiated the query
                                         should be aborted.
         """
-        uri = 'http://{}:{}/reflect'.format(reflector_ip, reflector_port)
+        uri = f'http://{reflector_ip}:{reflector_port}/reflect'
 
         try:
             r = requests.get(uri, timeout=1.0)
         except requests.Timeout as e:
-            raise RequestProcessingException(500, 'Reflector timed out',
-                                             "Reflector was unable to respond "
-                                             "in timely manner: {}".format(e))
+            raise RequestProcessingException(
+                500,
+                'Reflector timed out',
+                f"Reflector was unable to respond in timely manner: {e}",
+            )
+
         except requests.RequestException as e:
-            raise RequestProcessingException(500, 'Reflector connection error',
-                                             "Unable to connect to reflector: "
-                                             "{}".format(e))
+            raise RequestProcessingException(
+                500,
+                'Reflector connection error',
+                f"Unable to connect to reflector: {e}",
+            )
+
 
         if r.status_code != 200:
             msg_short = 'Data fetch from reflector failed.'
@@ -214,9 +218,11 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
         try:
             return r.json()
         except ValueError as e:
-            raise RequestProcessingException(500, 'Malformed reflector response',
-                                             "Reflectors response is not a "
-                                             "valid JSON: {}".format(e))
+            raise RequestProcessingException(
+                500,
+                'Malformed reflector response',
+                f"Reflectors response is not a valid JSON: {e}",
+            )
 
     def _handle_path_your_ip(self):
         """Responds to requests for server's IP address as seen by other cluster members
@@ -270,15 +276,16 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404, 'Not found', 'Endpoint is not supported')
 
-    def do_POST(self):  # noqa: ignore=N802
+    def do_POST(self):    # noqa: ignore=N802
         """Mini service router handling POST requests"""
         if self.path == '/your_ip':
             try:
                 self._handle_path_your_ip()
             except RequestProcessingException as e:
-                logging.error("Request processing exception occured: "
-                              "code: {}, reason: '{}', explanation: '{}'".format(
-                                  e.code, e.reason, e.explanation))
+                logging.error(
+                    f"Request processing exception occured: code: {e.code}, reason: '{e.reason}', explanation: '{e.explanation}'"
+                )
+
                 self.send_error(e.code, e.reason, e.explanation)
         elif self.path == '/signal_test_cache':
             self._handle_path_signal_test_cache(True)

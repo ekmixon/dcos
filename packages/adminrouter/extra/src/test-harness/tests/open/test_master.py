@@ -27,10 +27,10 @@ authed_endpoints = [
     '/service/scheduler-alwaysthere/foo/bar',
     '/service/nest1/scheduler-alwaysthere/foo/bar',
     '/service/nest2/nest1/scheduler-alwaysthere/foo/bar',
-    '/slave/{}'.format(AGENT1_ID),
+    f'/slave/{AGENT1_ID}',
     '/system/health/v1/foo/bar',
-    '/system/v1/agent/{}/logs/foo/bar'.format(AGENT1_ID),
-    '/system/v1/agent/{}/metrics/v0/foo/bar'.format(AGENT1_ID),
+    f'/system/v1/agent/{AGENT1_ID}/logs/foo/bar',
+    f'/system/v1/agent/{AGENT1_ID}/metrics/v0/foo/bar',
     '/system/v1/leader/marathon/foo/bar',
     '/system/v1/leader/mesos/foo/bar',
     '/system/v1/logs/foo/bar',
@@ -84,11 +84,9 @@ class TestDcosMetadata:
             uniq_content,
             path):
 
-        url = master_ar_process.make_url_from_path('/dcos-metadata/{}'.format(path))
+        url = master_ar_process.make_url_from_path(f'/dcos-metadata/{path}')
 
-        with overridden_file_content(
-                '/opt/mesosphere/active/dcos-metadata/etc/{}'.format(path),
-                uniq_content):
+        with overridden_file_content(f'/opt/mesosphere/active/dcos-metadata/etc/{path}', uniq_content):
             resp = requests.get(
                 url,
                 allow_redirects=False,

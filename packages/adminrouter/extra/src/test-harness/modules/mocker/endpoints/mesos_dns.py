@@ -40,13 +40,12 @@ class MesosDnsHTTPRequestHandler(RecordingHTTPRequestHandler):
             # to reuse SRV record path.
             return self._reflect_request(base_path, url_args, body_args)
 
-        match = self.SRV_QUERY_REGEXP.search(base_path)
-        if match:
+        if match := self.SRV_QUERY_REGEXP.search(base_path):
             return self.__srv_permissions_request_handler(match.group(1))
 
         raise EndpointException(
-            code=500,
-            content="Path `{}` is not supported yet".format(base_path))
+            code=500, content=f"Path `{base_path}` is not supported yet"
+        )
 
     def __srv_permissions_request_handler(self, srvid):
         """Calculate reply for given service-ID
@@ -57,9 +56,7 @@ class MesosDnsHTTPRequestHandler(RecordingHTTPRequestHandler):
         ctx = self.server.context
 
         if srvid not in ctx.data['services']:
-            raise EndpointException(
-                code=500,
-                content="Service `{}` is unknown".format(srvid))
+            raise EndpointException(code=500, content=f"Service `{srvid}` is unknown")
 
         blob = self._convert_data_to_blob(ctx.data['services'][srvid])
         return 200, 'application/json', blob
@@ -76,13 +73,12 @@ def create_srv_entry(srv_name, ip, port):
     Returns:
         SRV entry dict mimicing the one returned by MesosDNS
     """
-    res = {}
-    res['service'] = "_{}._tcp.marathon.mesos".format(srv_name)
-    res['host'] = "{}-74b1w-s1.marathon.mesos.".format(srv_name)
-    res['ip'] = ip
-    res['port'] = port
-
-    return res
+    return {
+        'service': f"_{srv_name}._tcp.marathon.mesos",
+        'host': f"{srv_name}-74b1w-s1.marathon.mesos.",
+        'ip': ip,
+        'port': port,
+    }
 
 
 EMPTY_SRV = {
@@ -127,11 +123,12 @@ SCHEDULER_SRV_ONLYMESOSDNS_NEST2 = {
     ],
 }
 
-INITIAL_SRVDATA = {}
-INITIAL_SRVDATA.update(SCHEDULER_SRV_ALWAYSTHERE)
-INITIAL_SRVDATA.update(SCHEDULER_SRV_ALWAYSTHERE_NEST1)
-INITIAL_SRVDATA.update(SCHEDULER_SRV_ALWAYSTHERE_NEST2)
-INITIAL_SRVDATA.update(SCHEDULER_SRV_ONLYMESOSDNS_NEST2)
+INITIAL_SRVDATA = (
+    SCHEDULER_SRV_ALWAYSTHERE
+    | SCHEDULER_SRV_ALWAYSTHERE_NEST1
+    | SCHEDULER_SRV_ALWAYSTHERE_NEST2
+    | SCHEDULER_SRV_ONLYMESOSDNS_NEST2
+)
 
 
 # pylint: disable=R0903,C0103

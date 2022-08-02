@@ -200,10 +200,10 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     # Determine the internal IP address of this node.
     my_internal_ip = utils.detect_ip()
-    log.info('My internal IP address is `{}`'.format(my_internal_ip))
+    log.info(f'My internal IP address is `{my_internal_ip}`')
 
     args = _parse_args()
-    log.info('Backup filepath: {}'.format(args.backup_file_path))
+    log.info(f'Backup filepath: {args.backup_file_path}')
 
     log.info('Begin IAM database restore procedure.')
     # Add sub-second timestamp resolution to the suffix so that this script can

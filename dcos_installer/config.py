@@ -39,7 +39,7 @@ def normalize_config_validation(messages):
 
     if 'unset' in messages:
         for key in messages['unset']:
-            validation[key] = 'Must set {}, no way to calculate value.'.format(key)
+            validation[key] = f'Must set {key}, no way to calculate value.'
 
     return validation
 
@@ -52,9 +52,7 @@ def normalize_config_validation_exception(error: ValidationError) -> dict:
     Args:
         exception: An exception raised during the config validation
     """
-    messages = {}
-    messages['errors'] = error.errors
-    messages['unset'] = error.unset
+    messages = {'errors': error.errors, 'unset': error.unset}
     return normalize_config_validation(messages)
 
 
@@ -89,14 +87,16 @@ class Config():
             return load_yaml(self.config_path)
         except FileNotFoundError as ex:
             raise NoConfigError(
-                "No config file found at {}. See the DC/OS documentation for the "
-                "available configuration options.".format(self.config_path)) from ex
+                f"No config file found at {self.config_path}. See the DC/OS documentation for the available configuration options."
+            ) from ex
+
         except OSError as ex:
             raise NoConfigError(
-                "Failed to open config file at {}: {}. See the DC/OS documentation to learn "
-                "how to create a config file.".format(self.config_path, ex)) from ex
+                f"Failed to open config file at {self.config_path}: {ex}. See the DC/OS documentation to learn how to create a config file."
+            ) from ex
+
         except YamlParseError as ex:
-            raise NoConfigError("Unable to load configuration file. {}".format(ex)) from ex
+            raise NoConfigError(f"Unable to load configuration file. {ex}") from ex
 
     def update(self, updates):
         # TODO(cmaloney): check that the updates are all for valid keys, keep

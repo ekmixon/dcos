@@ -61,11 +61,13 @@ class BaseHTTPRequestHandler(http.server.BaseHTTPRequestHandler,
         """
         ctx = self.server.context
 
-        res = {}
-        res['method'] = self.command
-        res['path'] = self.path
-        res['path_base'] = base_path
-        res['headers'] = self.headers.items()
+        res = {
+            'method': self.command,
+            'path': self.path,
+            'path_base': base_path,
+            'headers': self.headers.items(),
+        }
+
         res['request_version'] = self.request_version
         res['endpoint_id'] = ctx.data["endpoint_id"]
         res['args_url'] = url_args
@@ -90,7 +92,7 @@ class BaseHTTPRequestHandler(http.server.BaseHTTPRequestHandler,
 
         ctype, pdict = parse_header(self.headers['content-type'])
         if ctype == 'multipart/form-data':
-            postvars = parse_multipart(self.rfile, pdict)
+            return parse_multipart(self.rfile, pdict)
         elif ctype == 'application/x-www-form-urlencoded':
             # This should work (TM) basing on HTML5 spec:
             # Which default character encoding to use can only be determined
@@ -101,14 +103,15 @@ class BaseHTTPRequestHandler(http.server.BaseHTTPRequestHandler,
             # UTF-8 is suggested.
             length = int(self.headers['content-length'])
             post_data = self.rfile.read(length).decode('utf-8')
-            postvars = parse_qs(post_data,
-                                keep_blank_values=1,
-                                encoding="utf-8",
-                                errors="strict",
-                                )
+            return parse_qs(
+                post_data,
+                keep_blank_values=1,
+                encoding="utf-8",
+                errors="strict",
+            )
+
         else:
-            postvars = {}
-        return postvars
+            return {}
 
     def _process_commands(self, content_type, blob):
         """Process all the endpoint configuration and execute things that

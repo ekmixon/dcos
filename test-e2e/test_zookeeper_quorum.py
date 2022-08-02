@@ -16,7 +16,7 @@ from dcos_e2e.node import Node, Output
 
 
 def get_exhibitor_status(host: str) -> List[Dict[str, Any]]:
-    url = 'http://{}:8181/exhibitor/v1/cluster/status'.format(host)
+    url = f'http://{host}:8181/exhibitor/v1/cluster/status'
     r = requests.get(url)
     r.raise_for_status()
     try:

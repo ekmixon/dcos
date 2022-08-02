@@ -32,7 +32,7 @@ def test_get_function_parameters():
 def test_validate_arguments_strings():
     validate_arguments_strings = gen.internals.validate_arguments_strings
 
-    validate_arguments_strings(dict())
+    validate_arguments_strings({})
     validate_arguments_strings({'a': 'b'})
     validate_arguments_strings({'a': 'b', 'c': 'd', 'e': 'f'})
 

@@ -115,9 +115,7 @@ def backup_zookeeper(
             return None
         # The `zookeeper.out` contains ZooKeeper logs written to `stdout`.
         # These take up space and are irrelevant to the backup procedure.
-        if 'zookeeper.out' in tar_info.name:
-            return None
-        return tar_info
+        return None if 'zookeeper.out' in tar_info.name else tar_info
 
     with tarfile.open(name=str(backup), mode='x:gz') as tar:
         tar.add(
@@ -212,11 +210,9 @@ def _non_existing_file_path_existing_parent_dir(value: str) -> Path:
     """
     path = Path(value)
     if path.exists():
-        raise ArgumentTypeError('{} already exists'.format(path))
+        raise ArgumentTypeError(f'{path} already exists')
     if not Path(path.parent).exists():
-        raise ArgumentTypeError(
-            '{} parent directory does not exist'.format(path),
-        )
+        raise ArgumentTypeError(f'{path} parent directory does not exist')
     return path.absolute()
 
 
@@ -226,9 +222,9 @@ def _existing_file_path(value: str) -> Path:
     """
     path = Path(value)
     if not path.exists():
-        raise ArgumentTypeError('{} does not exist'.format(path))
+        raise ArgumentTypeError(f'{path} does not exist')
     if not path.is_file():
-        raise ArgumentTypeError('{} is not a file'.format(path))
+        raise ArgumentTypeError(f'{path} is not a file')
     return path.absolute()
 
 
@@ -238,9 +234,9 @@ def _existing_dir_path(value: str) -> Path:
     """
     path = Path(value)
     if not path.exists():
-        raise ArgumentTypeError('{} does not exist'.format(path))
+        raise ArgumentTypeError(f'{path} does not exist')
     if not path.is_dir():
-        raise ArgumentTypeError('{} is not a directory'.format(path))
+        raise ArgumentTypeError(f'{path} is not a directory')
     return path.absolute()
 
 

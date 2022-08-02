@@ -188,7 +188,7 @@ def app_from_template(app_id, port, ip="127.0.0.1", scheme="http"):
         App dict mimicing the one returned by Marathon
     """
     res = copy.deepcopy(SCHEDULER_APP_TEMPLATE)
-    res['id'] = '/' + app_id
+    res['id'] = f'/{app_id}'
     res['labels']['DCOS_SERVICE_NAME'] = app_id
     res['labels']['DCOS_SERVICE_SCHEME'] = scheme
     res['portDefinitions'][0]['port'] = port
@@ -236,7 +236,7 @@ class MarathonHTTPRequestHandler(RecordingHTTPRequestHandler):
             return self._reflect_request(base_path, url_args, body_args)
 
         if base_path not in ['/v2/apps', "/v2/leader"]:
-            msg = "Path `{}` is not supported yet".format(base_path)
+            msg = f"Path `{base_path}` is not supported yet"
             blob = msg.encode('utf-8')
             raise EndpointException(code=500, reason=blob)
 

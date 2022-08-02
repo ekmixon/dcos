@@ -25,10 +25,11 @@ superuser_password = str(uuid.uuid4())
 
 def assert_system_unit_state(node: Node, unit_name: str, active: bool = True) -> None:
     result = node.run(
-        args=["systemctl show {}".format(unit_name)],
+        args=[f"systemctl show {unit_name}"],
         output=Output.LOG_AND_CAPTURE,
         shell=True,
     )
+
     unit_properties = result.stdout.strip().decode()
     if active:
         assert "ActiveState=active" in unit_properties
@@ -80,19 +81,7 @@ def calico_ipip_cluster(docker_backend: Docker, artifact_path: Path,
         )
 
 
-@pytest.mark.skipif(
-    only_changed(E2E_SAFE_DEFAULT + [
-        # All packages safe except named packages
-        'packages/**',
-        '!packages/*treeinfo.json',
-        '!packages/etcd/**',
-        '!packages/calico/**',
-        '!packages/python*/**',
-        # All e2e tests safe except this test
-        'test-e2e/test_*', '!' + escape(trailing_path(__file__, 2)),
-    ]),
-    reason='Only safe files modified',
-)
+@pytest.mark.skipif(only_changed((E2E_SAFE_DEFAULT + ['packages/**', '!packages/*treeinfo.json', '!packages/etcd/**', '!packages/calico/**', '!packages/python*/**', 'test-e2e/test_*', f'!{escape(trailing_path(__file__, 2))}'])), reason='Only safe files modified')
 def test_calico_disabled(docker_backend: Docker, artifact_path: Path,
                          request: SubRequest, log_dir: Path) -> None:
     with Cluster(
@@ -125,18 +114,7 @@ def test_calico_disabled(docker_backend: Docker, artifact_path: Path,
                 assert_system_unit_state(node, unit_name, active=False)
 
 
-@pytest.mark.skipif(
-    only_changed(E2E_SAFE_DEFAULT + [
-        # All packages safe except named packages
-        'packages/*/**',
-        '!packages/{calico,etcd,java,marathon}/**',  # All packages safe except named packages
-        '!packages/dcos-integration-test/requirements.txt',
-        '!packages/dcos-integration-test/extra/{conftest,test_helpers,test_networking}.py',  # Used in test
-        # All e2e tests safe except this test
-        'test-e2e/test_*', '!' + escape(trailing_path(__file__, 2)),
-    ]),
-    reason='Only safe files modified',
-)
+@pytest.mark.skipif(only_changed((E2E_SAFE_DEFAULT + ['packages/*/**', '!packages/{calico,etcd,java,marathon}/**', '!packages/dcos-integration-test/requirements.txt', '!packages/dcos-integration-test/extra/{conftest,test_helpers,test_networking}.py', 'test-e2e/test_*', f'!{escape(trailing_path(__file__, 2))}'])), reason='Only safe files modified')
 def test_calico_ipip_container_connectivity(calico_ipip_cluster: Cluster) -> None:
 
     environment_variables = {
@@ -170,17 +148,7 @@ def test_calico_ipip_container_connectivity(calico_ipip_cluster: Cluster) -> Non
     )
 
 
-@pytest.mark.skipif(
-    only_changed(E2E_SAFE_DEFAULT + [
-        # All packages safe except named packages
-        'packages/*/**',
-        '!packages/{bootstrap,calico,etcd,openssl}/**',
-        '!packages/python*/**',
-        # All e2e tests safe except this test
-        'test-e2e/test_*', '!' + escape(trailing_path(__file__, 2)),
-    ]),
-    reason='Only safe files modified',
-)
+@pytest.mark.skipif(only_changed((E2E_SAFE_DEFAULT + ['packages/*/**', '!packages/{bootstrap,calico,etcd,openssl}/**', '!packages/python*/**', 'test-e2e/test_*', f'!{escape(trailing_path(__file__, 2))}'])), reason='Only safe files modified')
 def test_calico_ipip_unit_active(calico_ipip_cluster: Cluster) -> None:
     calico_units = ["dcos-calico-felix", "dcos-calico-bird", "dcos-calico-confd"]
     for node in calico_ipip_cluster.masters | calico_ipip_cluster.agents | calico_ipip_cluster.public_agents:

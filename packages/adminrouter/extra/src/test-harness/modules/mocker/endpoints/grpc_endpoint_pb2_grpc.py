@@ -36,22 +36,16 @@ class MockServiceServicer(object):
   pass
 
   def UnaryDoSomething(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
   def ClientStreamDoSomething(self, request_iterator, context):
-    # missing associated documentation comment in .proto file
-    pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
   def ServerSteramDoSomething(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')

@@ -32,7 +32,7 @@ class SyntaxError(Exception):
 
     def __str__(self):
         if self.filename:
-            return repr(self.message) + " while parsing file {}".format(self.filename)
+            return repr(self.message) + f" while parsing file {self.filename}"
         else:
             return repr(self.message)
 
@@ -51,9 +51,8 @@ class Tokenizer:
                 kind, value = self.__read_token()
             except SyntaxError as ex:
                 # TOOD(cmaloney): Calculate line and column information
-                context = "context: '{}'".format(self.__to_lex[:10])
-                raise SyntaxError(
-                    "ERROR parsing code near {}. {}".format(context, ex)) from ex
+                context = f"context: '{self.__to_lex[:10]}'"
+                raise SyntaxError(f"ERROR parsing code near {context}. {ex}") from ex
             self.tokens.append((kind, value))
             if kind == "eof":
                 break
@@ -81,13 +80,9 @@ class Tokenizer:
         # token.
         if self.__to_lex[0] != '{':
             split = self.__to_lex.split('{', 1)
-            assert(len(split) == 1 or len(split) == 2)
+            assert len(split) in {1, 2}
 
-            if len(split) == 2:
-                self.__to_lex = '{' + split[1]
-            else:
-                # No remaining '{' in text. This is the end of the string.
-                self.__to_lex = ''
+            self.__to_lex = '{' + split[1] if len(split) == 2 else ''
             return 'blob', split[0]
 
         # Process '{' beginning control sequences.
@@ -263,7 +258,7 @@ class Switch:
         self.cases = cases
 
     def __repr__(self):
-        return "<switch {} {}>".format(self.identifier, self.cases)
+        return f"<switch {self.identifier} {self.cases}>"
 
     def __eq__(self, other):
         return isinstance(other, Switch) and self.identifier == other.identifier and self.cases == other.cases
@@ -276,7 +271,7 @@ class For:
         self.body = body
 
     def __repr__(self):
-        return "<for {} in {}>".format(self.new_var, self.iterable)
+        return f"<for {self.new_var} in {self.iterable}>"
 
     def __eq__(self, other):
         return isinstance(other, For) and self.new_var == other.new_var and self.iterable == other.iterable
@@ -289,9 +284,7 @@ class Replacement:
         self.filter = identifier_and_filter[1]
 
     def __repr__(self):
-        return "<replacement {}{}>".format(
-            self.identifier,
-            (" filter " + self.filter) if self.filter is not None else "")
+        return f'<replacement {self.identifier}{f" filter {self.filter}" if self.filter is not None else ""}>'
 
     def __eq__(self, other):
         return isinstance(other, Replacement) and self.identifier == other.identifier
@@ -326,8 +319,10 @@ class Template:
                 if isinstance(chunk, Switch):
                     choice = get_argument(chunk.identifier)
                     if choice not in chunk.cases:
-                        raise ValueError("switch %s: value `%s` is not in the set of handled cases" % (
-                            chunk.identifier, choice))
+                        raise ValueError(
+                            f"switch {chunk.identifier}: value `{choice}` is not in the set of handled cases"
+                        )
+
                     rendered += render_ast(chunk.cases[choice])
                 elif isinstance(chunk, Replacement):
                     value = get_argument(chunk.identifier)
@@ -417,7 +412,7 @@ class Template:
         return filters
 
     def __repr__(self):
-        return "<template {}>".format(self.ast)
+        return f"<template {self.ast}>"
 
     def __eq__(self, other):
         return isinstance(other, Template) and self.ast == other.ast
@@ -437,7 +432,7 @@ def _parse_for(tokenizer):
     # Should stop reading the body at the endfor
     token_type, value = tokenizer.peek()
     if token_type != 'endfor':
-        raise ValueError("Expecting end of for, but found {}.".format(token_type))
+        raise ValueError(f"Expecting end of for, but found {token_type}.")
 
     tokenizer.advance()
     return For(new_var, iterable, body)
@@ -447,12 +442,12 @@ def _parse_switch(tokenizer):
     token_type, identifier = tokenizer.peek()
     assert(token_type == 'switch')
 
-    cases = dict()
+    cases = {}
     is_first = True
 
     # Immediately inside should be a case, followed by lots more of those
     tokenizer.advance()
-    while(True):
+    while True:
         token_type, value = tokenizer.peek()
         if token_type == 'case':
             tokenizer.advance()
@@ -468,7 +463,9 @@ def _parse_switch(tokenizer):
             tokenizer.advance()
         else:
             raise ValueError(
-                "Unexpected token of type {} inside switch. Expected a case or endswitch.".format(token_type))
+                f"Unexpected token of type {token_type} inside switch. Expected a case or endswitch."
+            )
+
         is_first = False
     raise RuntimeError("Unexpectedly exited the while loop in _parse_switch")
 
@@ -498,7 +495,9 @@ def parse_str(text):
     token_type, _ = tokenizer.peek()
     if token_type != "eof":
         raise ValueError(
-            "Unexpected token of type {} at end of text, expecting EOF".format(token_type))
+            f"Unexpected token of type {token_type} at end of text, expecting EOF"
+        )
+
     return Template(ast)
 
 

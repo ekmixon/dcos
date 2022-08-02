@@ -173,7 +173,7 @@ class TestAuthnJWTValidator:
             }
 
         token = jwt_generator(uid='test', skip_uid_claim=True)
-        auth_header = {'Authorization': 'token={}'.format(token)}
+        auth_header = {'Authorization': f'token={token}'}
         assert_endpoint_response(
             master_ar_process_perclass,
             EXHIBITOR_PATH,
@@ -189,7 +189,7 @@ class TestAuthnJWTValidator:
             ):
         # We accept "forever tokens"
         token = jwt_generator(uid='test', skip_exp_claim=True)
-        auth_header = {'Authorization': 'token={}'.format(token)}
+        auth_header = {'Authorization': f'token={token}'}
         assert_endpoint_response(
             master_ar_process_perclass,
             EXHIBITOR_PATH,
@@ -208,7 +208,7 @@ class TestAuthnJWTValidator:
             }
 
         token = jwt_generator(uid='test', exp=time.time() - 15)
-        auth_header = {'Authorization': 'token={}'.format(token)}
+        auth_header = {'Authorization': f'token={token}'}
         assert_endpoint_response(
             master_ar_process_perclass,
             EXHIBITOR_PATH,
@@ -224,7 +224,7 @@ class TestAuthnJWTValidator:
             ):
         # We accept "forever tokens"
         token = jwt_generator(uid='test')
-        auth_header = {'Authorization': 'Bearer {}'.format(token)}
+        auth_header = {'Authorization': f'Bearer {token}'}
         assert_endpoint_response(
             master_ar_process_perclass,
             EXHIBITOR_PATH,

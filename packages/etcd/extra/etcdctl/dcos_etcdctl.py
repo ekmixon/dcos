@@ -34,7 +34,7 @@ def run_command(cmd: str,
     """
     stdout = None if verbose else subprocess.PIPE
     stderr = None if verbose else subprocess.STDOUT
-    p = subprocess.run(
+    return subprocess.run(
         args=shlex.split(cmd),
         stdout=stdout,
         stderr=stderr,
@@ -42,24 +42,21 @@ def run_command(cmd: str,
         check=True,
         env=env,
     )
-    return p
 
 
 def detect_ip():
     cmd = '/opt/mesosphere/bin/detect_ip'
     ret = run_command(cmd)
-    machine_ip = ret.stdout.strip()
-    return machine_ip
+    return ret.stdout.strip()
 
 
 def non_existing_file_path_existing_parent_dir(value: str) -> Path:
     """Validate a path does not exist but its parent directory tree exists."""
     path = Path(value)
     if path.exists():
-        raise ArgumentTypeError('{} already exists'.format(path))
+        raise ArgumentTypeError(f'{path} already exists')
     if not Path(path.parent).exists():
-        raise ArgumentTypeError(
-            '{} parent directory does not exist'.format(path))
+        raise ArgumentTypeError(f'{path} parent directory does not exist')
     return path.absolute()
 
 
@@ -67,9 +64,9 @@ def existing_file_path(value: str) -> Path:
     """Validate that the value is a file existing on the file system."""
     path = Path(value)
     if not path.exists():
-        raise argparse.ArgumentTypeError('{} does not exist'.format(path))
+        raise argparse.ArgumentTypeError(f'{path} does not exist')
     if not path.is_file():
-        raise argparse.ArgumentTypeError('{} is not a file'.format(path))
+        raise argparse.ArgumentTypeError(f'{path} is not a file')
     return path.absolute()
 
 
@@ -82,9 +79,7 @@ class EtcdExecutorCommon():
 
     def log_cmd_result(self, cmd: str, p: subprocess.CompletedProcess) -> None:
         def _sanitize_output(output):
-            if output is None:
-                return output
-            return output.strip()
+            return output if output is None else output.strip()
 
         print(
             "cmd `{}`, exit status: `{}`, stdout: `{}`, stderr: `{}`\n".format(
@@ -95,8 +90,7 @@ class EtcdExecutorCommon():
         endpoint_ip = self.private_ip
         if user_master_endpoint:
             endpoint_ip = self.master_ip
-        endpoint = "{}://{}:2379".format(scheme, endpoint_ip)
-        return endpoint
+        return f"{scheme}://{endpoint_ip}:2379"
 
 
 class EtcdExecutorSecure(EtcdExecutorCommon):
@@ -116,11 +110,11 @@ class EtcdExecutorSecure(EtcdExecutorCommon):
     ) -> subprocess.CompletedProcess:
         cmd = self.etcdctl_path
         endpoint = self.get_endpoint(self.scheme, user_master_endpoint)
-        cmd = "{} --endpoints={}".format(cmd, endpoint)
-        cmd = "{} --cacert={} --cert={} --key={}".format(
-            cmd, self.ca_cert_file, self.cert_file, self.key_file)
-        cmd = "{} {}".format(cmd, args)
-        env = {} if not use_v3 else {"ETCDCTL_API": "3"}
+        cmd = f"{cmd} --endpoints={endpoint}"
+        cmd = f"{cmd} --cacert={self.ca_cert_file} --cert={self.cert_file} --key={self.key_file}"
+
+        cmd = f"{cmd} {args}"
+        env = {"ETCDCTL_API": "3"} if use_v3 else {}
         result = run_command(cmd, env=env)
 
         self.log_cmd_result(args, result)
@@ -141,9 +135,9 @@ class EtcdExecutorInsecure(EtcdExecutorCommon):
     ) -> subprocess.CompletedProcess:
         cmd = self.etcdctl_path
         endpoint = self.get_endpoint(self.scheme, user_master_endpoint)
-        cmd = "{} --endpoints={}".format(cmd, endpoint)
-        cmd = "{} {}".format(cmd, args)
-        env = {} if not use_v3 else {"ETCDCTL_API": "3"}
+        cmd = f"{cmd} --endpoints={endpoint}"
+        cmd = f"{cmd} {args}"
+        env = {"ETCDCTL_API": "3"} if use_v3 else {}
         result = run_command(cmd, env=env)
         self.log_cmd_result(args, result)
 
@@ -165,7 +159,7 @@ class EtcdCmdBase():
         with open(dcos_cfg_path, 'rb') as f:
             dcos_config = json.loads(f.read().decode('utf-8'))
         dcos_variant = dcos_config.get("dcos_variant")
-        return True if dcos_variant == "enterprise" else False
+        return dcos_variant == "enterprise"
 
     def execute_etcdctl(
             self,
@@ -188,9 +182,11 @@ class EtcdBackupAndRestore(EtcdCmdBase):
 
     def backup(self) -> None:
         parser = argparse.ArgumentParser(
-            usage='{} backup [-h] backup_path'.format(sys.argv[0]),
+            usage=f'{sys.argv[0]} backup [-h] backup_path',
             description='Create a backup of the etcd instance running on this '
-                        'DC/OS master node.')
+            'DC/OS master node.',
+        )
+
         parser.add_argument(
             'backup_path',
             type=non_existing_file_path_existing_parent_dir,
@@ -198,13 +194,13 @@ class EtcdBackupAndRestore(EtcdCmdBase):
                  'will be written to',
         )
         args = parser.parse_args(sys.argv[2:])
-        print("Backing up etcd into {}".format(args.backup_path))
+        print(f"Backing up etcd into {args.backup_path}")
         with tempfile.TemporaryDirectory(suffix="-back-etcd") as tmp_dir:
             snapshot_file = os.path.join(tmp_dir, self.SNAPSHOT_NAME)
-            self.execute_etcdctl("snapshot save {}".format(snapshot_file))
+            self.execute_etcdctl(f"snapshot save {snapshot_file}")
             with tarfile.open(name=args.backup_path, mode='x:gz') as tar:
                 tar.add(name=snapshot_file, arcname=self.SNAPSHOT_NAME)
-        print("etcd snaptshot is archieved under {}".format(args.backup_path))
+        print(f"etcd snaptshot is archieved under {args.backup_path}")
 
     def restore(self) -> None:
         """ restore etcd cluster from backup file

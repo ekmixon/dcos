@@ -38,7 +38,7 @@ def main(directory, max_files, managed_file):
         return
 
     oldest_first = sorted(all_files, key=lambda x: os.stat(x).st_mtime_ns)
-    to_delete = oldest_first[0:len(all_files) - max_files]
+    to_delete = oldest_first[:len(all_files) - max_files]
 
     delete_mtime_threshold = time.strftime(
         "%a, %d %b %Y %H:%M:%S +0000",

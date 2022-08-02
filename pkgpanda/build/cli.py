@@ -21,7 +21,10 @@ import pkgpanda.build.constants
 
 def main():
     try:
-        arguments = docopt(__doc__, version="mkpanda {}".format(pkgpanda.build.constants.version))
+        arguments = docopt(
+            __doc__, version=f"mkpanda {pkgpanda.build.constants.version}"
+        )
+
         umask(0o022)
         variant_arg = arguments['--variant']
         # map the keyword 'default' to None to build default as this is how default is internally
@@ -40,7 +43,10 @@ def main():
         name = basename(getcwd())
 
         # Package store is always the parent directory
-        package_store = pkgpanda.build.PackageStore(normpath(getcwd() + '/../'), arguments['--repository-url'])
+        package_store = pkgpanda.build.PackageStore(
+            normpath(f'{getcwd()}/../'), arguments['--repository-url']
+        )
+
 
         # Check that the folder is a package folder (the name was found by the package store as a
         # valid package with 1+ variants).
@@ -72,11 +78,11 @@ def main():
         for k, v in pkg_dict.items():
             if k is None:
                 k = "<default>"
-            print(k + ':' + v)
+            print(f'{k}:{v}')
 
         sys.exit(0)
     except pkgpanda.build.BuildError as ex:
-        print("ERROR: {}".format(ex))
+        print(f"ERROR: {ex}")
         sys.exit(1)
 
 

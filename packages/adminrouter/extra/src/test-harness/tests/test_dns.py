@@ -38,11 +38,9 @@ class TestNginxResolver:
         ar = nginx_class(upstream_mesos="http://leader.mesos:5050")
         with GuardedSubprocess(ar):
             generic_correct_upstream_dest_test(
-                ar,
-                valid_user_header,
-                path,
-                "http://127.0.0.2:{}".format(dest_port),
-                )
+                ar, valid_user_header, path, f"http://127.0.0.2:{dest_port}"
+            )
+
 
             # Update the `leader.mesos.` entry with new value
             dns_server_mock.set_dns_entry(
@@ -52,11 +50,8 @@ class TestNginxResolver:
             time.sleep(5 * 1.5)
 
             generic_correct_upstream_dest_test(
-                ar,
-                valid_user_header,
-                path,
-                "http://127.0.0.3:{}".format(dest_port),
-                )
+                ar, valid_user_header, path, f"http://127.0.0.3:{dest_port}"
+            )
 
     def test_if_mesos_leader_is_reresolved_by_lua(
             self, nginx_class, mocker, dns_server_mock, valid_user_header):

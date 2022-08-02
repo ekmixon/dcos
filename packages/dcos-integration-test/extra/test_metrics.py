@@ -35,7 +35,7 @@ def check_tags(tags: dict, required_tag_names: set, optional_tag_names: set = se
     assert keys & required_tag_names == required_tag_names, 'Not all required tags were set'
     assert keys - required_tag_names - optional_tag_names == set(), 'Encountered unexpected tags'
     for tag_name, tag_val in tags.items():
-        assert tag_val != '', 'Value for tag "{}" must not be empty'.format(tag_name)
+        assert tag_val != '', f'Value for tag "{tag_name}" must not be empty'
 
 
 def test_metrics_ping(dcos_api_session: DcosApiSession) -> None:
@@ -44,9 +44,13 @@ def test_metrics_ping(dcos_api_session: DcosApiSession) -> None:
 
     for node in nodes:
         response = dcos_api_session.metrics.get('/ping', node=node)
-        assert response.status_code == 200, 'Status code: {}, Content {}'.format(
-            response.status_code, response.content)
-        assert response.json()['ok'], 'Status code: {}, Content {}'.format(response.status_code, response.content)
+        assert (
+            response.status_code == 200
+        ), f'Status code: {response.status_code}, Content {response.content}'
+
+        assert response.json()[
+            'ok'
+        ], f'Status code: {response.status_code}, Content {response.content}'
 
 
 def test_metrics_agents_prom(dcos_api_session: DcosApiSession) -> None:
@@ -54,8 +58,11 @@ def test_metrics_agents_prom(dcos_api_session: DcosApiSession) -> None:
     nodes = get_master_and_agents(dcos_api_session)
 
     for node in nodes:
-        response = dcos_api_session.session.request('GET', 'http://' + node + ':61091/metrics')
-        assert response.status_code == 200, 'Status code: {}'.format(response.status_code)
+        response = dcos_api_session.session.request(
+            'GET', f'http://{node}:61091/metrics'
+        )
+
+        assert response.status_code == 200, f'Status code: {response.status_code}'
 
 
 @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
@@ -66,8 +73,10 @@ def get_metrics_prom(dcos_api_session: DcosApiSession, node: str) -> Any:
 
     """
     response = dcos_api_session.session.request(
-        'GET', 'http://{}:61091/metrics'.format(node))
-    assert response.status_code == 200, 'Status code: {}'.format(response.status_code)
+        'GET', f'http://{node}:61091/metrics'
+    )
+
+    assert response.status_code == 200, f'Status code: {response.status_code}'
     return response
 
 
@@ -354,17 +363,13 @@ def test_metrics_master_adminrouter_nginx_vts_processor(dcos_api_session: DcosAp
     assert r.status_code == 200
 
     @retrying.retry(
-        wait_fixed=STD_INTERVAL,
-        stop_max_delay=METRICS_WAITTIME,
-        retry_on_exception=lambda e: isinstance(e, AssertionError)
-    )
+            wait_fixed=STD_INTERVAL,
+            stop_max_delay=METRICS_WAITTIME,
+            retry_on_exception=lambda e: isinstance(e, AssertionError)
+        )
     def check_adminrouter_metrics() -> None:
         measurements = set()
-        expect_dropped = set([
-            'nginx_vts_filter',
-            'nginx_vts_upstream',
-            'nginx_vts_server',
-        ])
+        expect_dropped = {'nginx_vts_filter', 'nginx_vts_upstream', 'nginx_vts_server'}
         unexpected_samples = []
 
         response = get_metrics_prom(dcos_api_session, node)
@@ -376,21 +381,23 @@ def test_metrics_master_adminrouter_nginx_vts_processor(dcos_api_session: DcosAp
                     if basename in expect_dropped:
                         unexpected_samples.append(sample)
 
-        assert unexpected_samples == []
+        assert not unexpected_samples
 
-        expected = set([
+        expected = {
             'nginx_server_status',
             'nginx_upstream_status',
             'nginx_upstream_backend',
             'nginx_service_backend',
             'nginx_service_status',
-        ])
+        }
+
 
         difference = expected - measurements
         assert not difference
 
         remainders = expect_dropped & measurements
         assert not remainders
+
     check_adminrouter_metrics()
 
 
@@ -431,17 +438,13 @@ def test_metrics_agent_adminrouter_nginx_vts_processor(dcos_api_session: DcosApi
     nodes = get_agents(dcos_api_session)
     for node in nodes:
         @retrying.retry(
-            wait_fixed=STD_INTERVAL,
-            stop_max_delay=METRICS_WAITTIME,
-            retry_on_exception=lambda e: isinstance(e, AssertionError)
-        )
+                    wait_fixed=STD_INTERVAL,
+                    stop_max_delay=METRICS_WAITTIME,
+                    retry_on_exception=lambda e: isinstance(e, AssertionError)
+                )
         def check_adminrouter_metrics() -> None:
             measurements = set()
-            expect_dropped = set([
-                'nginx_vts_filter',
-                'nginx_vts_upstream',
-                'nginx_vts_server',
-            ])
+            expect_dropped = {'nginx_vts_filter', 'nginx_vts_upstream', 'nginx_vts_server'}
             unexpected_samples = []
 
             response = get_metrics_prom(dcos_api_session, node)
@@ -453,16 +456,15 @@ def test_metrics_agent_adminrouter_nginx_vts_processor(dcos_api_session: DcosApi
                         if basename in expect_dropped:
                             unexpected_samples.append(sample)
 
-            assert unexpected_samples == []
+            assert not unexpected_samples
 
-            expected = set([
-                'nginx_server_status',
-            ])
+            expected = {'nginx_server_status'}
             difference = expected - measurements
             assert not difference
 
             remainders = expect_dropped & measurements
             assert not remainders
+
         check_adminrouter_metrics()
 
 
@@ -531,53 +533,46 @@ def test_metrics_agent_statsd(dcos_api_session: DcosApiSession) -> None:
     task_name = 'test-metrics-statsd-app'
     metric_name_pfx = 'test_metrics_statsd_app'
     marathon_app = {
-        'id': '/' + task_name,
+        'id': f'/{task_name}',
         'instances': 1,
         'cpus': 0.1,
         'mem': 128,
         'env': {
             'STATIC_STATSD_UDP_PORT': '61825',
-            'STATIC_STATSD_UDP_HOST': 'localhost'
+            'STATIC_STATSD_UDP_HOST': 'localhost',
         },
-        'cmd': '\n'.join([
-            'echo "Sending metrics to $STATIC_STATSD_UDP_HOST:$STATIC_STATSD_UDP_PORT"',
-            'echo "Sending gauge"',
-            'echo "{}.gauge:100|g" | nc -w 1 -u $STATIC_STATSD_UDP_HOST $STATIC_STATSD_UDP_PORT'.format(
-                metric_name_pfx),
-
-            'echo "Sending counts"',
-            'echo "{}.count:1|c" | nc -w 1 -u $STATIC_STATSD_UDP_HOST $STATIC_STATSD_UDP_PORT'.format(
-                metric_name_pfx),
-
-            'echo "Sending timings"',
-            'echo "{}.timing:1|ms" | nc -w 1 -u $STATIC_STATSD_UDP_HOST $STATIC_STATSD_UDP_PORT'.format(
-                metric_name_pfx),
-
-            'echo "Sending histograms"',
-            'echo "{}.histogram:1|h" | nc -w 1 -u $STATIC_STATSD_UDP_HOST $STATIC_STATSD_UDP_PORT'.format(
-                metric_name_pfx),
-
-            'echo "Done. Sleeping forever."',
-            'while true; do',
-            '  sleep 1000',
-            'done',
-        ]),
+        'cmd': '\n'.join(
+            [
+                'echo "Sending metrics to $STATIC_STATSD_UDP_HOST:$STATIC_STATSD_UDP_PORT"',
+                'echo "Sending gauge"',
+                f'echo "{metric_name_pfx}.gauge:100|g" | nc -w 1 -u $STATIC_STATSD_UDP_HOST $STATIC_STATSD_UDP_PORT',
+                'echo "Sending counts"',
+                f'echo "{metric_name_pfx}.count:1|c" | nc -w 1 -u $STATIC_STATSD_UDP_HOST $STATIC_STATSD_UDP_PORT',
+                'echo "Sending timings"',
+                f'echo "{metric_name_pfx}.timing:1|ms" | nc -w 1 -u $STATIC_STATSD_UDP_HOST $STATIC_STATSD_UDP_PORT',
+                'echo "Sending histograms"',
+                f'echo "{metric_name_pfx}.histogram:1|h" | nc -w 1 -u $STATIC_STATSD_UDP_HOST $STATIC_STATSD_UDP_PORT',
+                'echo "Done. Sleeping forever."',
+                'while true; do',
+                '  sleep 1000',
+                'done',
+            ]
+        ),
         'container': {
             'type': 'MESOS',
             # pin image to working version - https://jira.mesosphere.com/browse/DCOS-62478
-            'docker': {'image': 'library/alpine:3.10.3'}
+            'docker': {'image': 'library/alpine:3.10.3'},
         },
         'networks': [{'mode': 'host'}],
     }
+
     expected_metrics = {
-        metric_name_pfx + '_gauge': 100.0,
-        # NOTE: prometheus_client appends _total to counter-type metrics if they don't already have the suffix
-        # ref: https://github.com/prometheus/client_python/blob/master/prometheus_client/parser.py#L169
-        # (the raw prometheus output here omits _total)
-        metric_name_pfx + '_count_total': 1.0,
-        metric_name_pfx + '_timing_count': 1.0,
-        metric_name_pfx + '_histogram_count': 1.0,
+        f'{metric_name_pfx}_gauge': 100.0,
+        f'{metric_name_pfx}_count_total': 1.0,
+        f'{metric_name_pfx}_timing_count': 1.0,
+        f'{metric_name_pfx}_histogram_count': 1.0,
     }
+
 
     if dcos_api_session.slaves:
         marathon_app['constraints'] = [['hostname', 'LIKE', dcos_api_session.slaves[0]]]
@@ -683,9 +678,10 @@ def test_executor_metrics_metadata(dcos_api_session: DcosApiSession) -> None:
                     if sample[0] == 'cpus_nr_periods' and sample[1].get('service_name') == 'hello-world':
                         assert sample[1]['task_name'] == ''
                         # hello-world executors can be named "hello" or "world"
-                        assert (sample[1]['executor_name'] == 'hello' or sample[1]['executor_name'] == 'world')
+                        assert sample[1]['executor_name'] in ['hello', 'world']
                         return
             raise Exception('Expected hello-world executor metrics not found')
+
         check_executor_metrics_metadata()
 
 
@@ -846,41 +842,37 @@ def test_statsd_metrics_containers_app(dcos_api_session: DcosApiSession) -> None
     task_name = 'test-statsd-metrics-containers-app'
     metric_name_pfx = 'test_statsd_metrics_containers_app'
     marathon_app = {
-        'id': '/' + task_name,
+        'id': f'/{task_name}',
         'instances': 1,
         'cpus': 0.1,
         'mem': 128,
-        'cmd': '\n'.join([
-            'echo "Sending metrics to $STATSD_UDP_HOST:$STATSD_UDP_PORT"',
-            'echo "Sending gauge"',
-            'echo "{}.gauge:100|g" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name_pfx),
-
-            'echo "Sending counts"',
-            'echo "{}.count:1|c" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name_pfx),
-            'echo "{}.count:1|c" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name_pfx),
-
-            'echo "Sending timings"',
-            'echo "{}.timing:1|ms" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name_pfx),
-            'echo "{}.timing:2|ms" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name_pfx),
-            'echo "{}.timing:3|ms" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name_pfx),
-
-            'echo "Sending histograms"',
-            'echo "{}.histogram:1|h" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name_pfx),
-            'echo "{}.histogram:2|h" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name_pfx),
-            'echo "{}.histogram:3|h" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name_pfx),
-            'echo "{}.histogram:4|h" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name_pfx),
-
-            'echo "Done. Sleeping forever."',
-            'while true; do',
-            '  sleep 1000',
-            'done',
-        ]),
-        'container': {
-            'type': 'MESOS',
-            'docker': {'image': 'library/alpine'}
-        },
+        'cmd': '\n'.join(
+            [
+                'echo "Sending metrics to $STATSD_UDP_HOST:$STATSD_UDP_PORT"',
+                'echo "Sending gauge"',
+                f'echo "{metric_name_pfx}.gauge:100|g" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                'echo "Sending counts"',
+                f'echo "{metric_name_pfx}.count:1|c" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                f'echo "{metric_name_pfx}.count:1|c" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                'echo "Sending timings"',
+                f'echo "{metric_name_pfx}.timing:1|ms" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                f'echo "{metric_name_pfx}.timing:2|ms" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                f'echo "{metric_name_pfx}.timing:3|ms" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                'echo "Sending histograms"',
+                f'echo "{metric_name_pfx}.histogram:1|h" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                f'echo "{metric_name_pfx}.histogram:2|h" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                f'echo "{metric_name_pfx}.histogram:3|h" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                f'echo "{metric_name_pfx}.histogram:4|h" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                'echo "Done. Sleeping forever."',
+                'while true; do',
+                '  sleep 1000',
+                'done',
+            ]
+        ),
+        'container': {'type': 'MESOS', 'docker': {'image': 'library/alpine'}},
         'networks': [{'mode': 'host'}],
     }
+
     expected_metrics = [
         # metric_name, metric_value
         ('.'.join([metric_name_pfx, 'gauge']), 100),
@@ -907,38 +899,41 @@ def test_prom_metrics_containers_app_host(dcos_api_session: DcosApiSession) -> N
     task_name = 'test-prom-metrics-containers-app-host'
     metric_name_pfx = 'test_prom_metrics_containers_app_host'
     marathon_app = {
-        'id': '/' + task_name,
+        'id': f'/{task_name}',
         'instances': 1,
         'cpus': 0.1,
         'mem': 128,
-        'cmd': '\n'.join([
-            'echo "Creating metrics file..."',
-            'touch metrics',
-
-            'echo "# TYPE {}_gauge gauge" >> metrics'.format(metric_name_pfx),
-            'echo "{}_gauge 100" >> metrics'.format(metric_name_pfx),
-
-            'echo "# TYPE {}_count counter" >> metrics'.format(metric_name_pfx),
-            'echo "{}_count 2" >> metrics'.format(metric_name_pfx),
-
-            'echo "# TYPE {}_histogram histogram" >> metrics'.format(metric_name_pfx),
-            'echo "{}_histogram_bucket{{le=\\"+Inf\\"}} 4" >> metrics'.format(metric_name_pfx),
-            'echo "{}_histogram_sum 4" >> metrics'.format(metric_name_pfx),
-            'echo "{}_histogram_seconds_count 4" >> metrics'.format(metric_name_pfx),
-
-            'echo "Serving prometheus metrics on http://localhost:$PORT0"',
-            'python3 -m http.server $PORT0',
-        ]),
+        'cmd': '\n'.join(
+            [
+                'echo "Creating metrics file..."',
+                'touch metrics',
+                f'echo "# TYPE {metric_name_pfx}_gauge gauge" >> metrics',
+                f'echo "{metric_name_pfx}_gauge 100" >> metrics',
+                f'echo "# TYPE {metric_name_pfx}_count counter" >> metrics',
+                f'echo "{metric_name_pfx}_count 2" >> metrics',
+                f'echo "# TYPE {metric_name_pfx}_histogram histogram" >> metrics',
+                'echo "{}_histogram_bucket{{le=\\"+Inf\\"}} 4" >> metrics'.format(
+                    metric_name_pfx
+                ),
+                f'echo "{metric_name_pfx}_histogram_sum 4" >> metrics',
+                f'echo "{metric_name_pfx}_histogram_seconds_count 4" >> metrics',
+                'echo "Serving prometheus metrics on http://localhost:$PORT0"',
+                'python3 -m http.server $PORT0',
+            ]
+        ),
         'container': {
             'type': 'DOCKER',
-            'docker': {'image': 'library/python:3'}
+            'docker': {'image': 'library/python:3'},
         },
-        'portDefinitions': [{
-            'protocol': 'tcp',
-            'port': 0,
-            'labels': {'DCOS_METRICS_FORMAT': 'prometheus'},
-        }],
+        'portDefinitions': [
+            {
+                'protocol': 'tcp',
+                'port': 0,
+                'labels': {'DCOS_METRICS_FORMAT': 'prometheus'},
+            }
+        ],
     }
+
 
     logging.debug('Starting marathon app with config: %s', marathon_app)
     expected_metrics = [
@@ -956,28 +951,28 @@ def test_prom_metrics_containers_app_bridge(dcos_api_session: DcosApiSession) ->
     task_name = 'test-prom-metrics-containers-app-bridge'
     metric_name_pfx = 'test_prom_metrics_containers_app_bridge'
     marathon_app = {
-        'id': '/' + task_name,
+        'id': f'/{task_name}',
         'instances': 1,
         'cpus': 0.1,
         'mem': 128,
-        'cmd': '\n'.join([
-            'echo "Creating metrics file..."',
-            'touch metrics',
-
-            'echo "# TYPE {}_gauge gauge" >> metrics'.format(metric_name_pfx),
-            'echo "{}_gauge 100" >> metrics'.format(metric_name_pfx),
-
-            'echo "# TYPE {}_count counter" >> metrics'.format(metric_name_pfx),
-            'echo "{}_count 2" >> metrics'.format(metric_name_pfx),
-
-            'echo "# TYPE {}_histogram histogram" >> metrics'.format(metric_name_pfx),
-            'echo "{}_histogram_bucket{{le=\\"+Inf\\"}} 4" >> metrics'.format(metric_name_pfx),
-            'echo "{}_histogram_sum 4" >> metrics'.format(metric_name_pfx),
-            'echo "{}_histogram_seconds_count 4" >> metrics'.format(metric_name_pfx),
-
-            'echo "Serving prometheus metrics on http://localhost:8000"',
-            'python3 -m http.server 8000',
-        ]),
+        'cmd': '\n'.join(
+            [
+                'echo "Creating metrics file..."',
+                'touch metrics',
+                f'echo "# TYPE {metric_name_pfx}_gauge gauge" >> metrics',
+                f'echo "{metric_name_pfx}_gauge 100" >> metrics',
+                f'echo "# TYPE {metric_name_pfx}_count counter" >> metrics',
+                f'echo "{metric_name_pfx}_count 2" >> metrics',
+                f'echo "# TYPE {metric_name_pfx}_histogram histogram" >> metrics',
+                'echo "{}_histogram_bucket{{le=\\"+Inf\\"}} 4" >> metrics'.format(
+                    metric_name_pfx
+                ),
+                f'echo "{metric_name_pfx}_histogram_sum 4" >> metrics',
+                f'echo "{metric_name_pfx}_histogram_seconds_count 4" >> metrics',
+                'echo "Serving prometheus metrics on http://localhost:8000"',
+                'python3 -m http.server 8000',
+            ]
+        ),
         'networks': [{'mode': 'container/bridge'}],
         'container': {
             'type': 'MESOS',
@@ -989,9 +984,10 @@ def test_prom_metrics_containers_app_bridge(dcos_api_session: DcosApiSession) ->
                     'protocol': 'tcp',
                     'labels': {'DCOS_METRICS_FORMAT': 'prometheus'},
                 }
-            ]
+            ],
         },
     }
+
 
     logging.debug('Starting marathon app with config: %s', marathon_app)
     expected_metrics = [
@@ -1014,32 +1010,29 @@ def test_task_prom_metrics_not_filtered(dcos_api_session: DcosApiSession) -> Non
     task_name = 'test-task-prom-metrics-not-filtered'
     metric_name_pfx = 'test_task_prom_metrics_not_filtered'
     marathon_app = {
-        'id': '/' + task_name,
+        'id': f'/{task_name}',
         'instances': 1,
         'cpus': 0.1,
         'mem': 128,
-        'cmd': '\n'.join([
-            # Serve metrics that would be dropped by Telegraf were they collected from the adminrouter. These are task
-            # metrics, so we expect Telegraf to gather and output them.
-            'echo "Creating metrics file..."',
-
-            # Adminrouter metrics with direction="[1-5]xx" tags get dropped.
-            'echo "# TYPE {}_gauge gauge" >> metrics'.format(metric_name_pfx),
-            'echo "{}_gauge{{direction=\\"1xx\\"}} 100" >> metrics'.format(metric_name_pfx),
-
-            # Adminrouter metrics with these names get dropped.
-            'echo "# TYPE nginx_vts_filter_cache_foo gauge" >> metrics',
-            'echo "nginx_vts_filter_cache_foo 100" >> metrics',
-            'echo "# TYPE nginx_vts_server_foo gauge" >> metrics',
-            'echo "nginx_vts_server_foo 100" >> metrics',
-            'echo "# TYPE nginx_vts_upstream_foo gauge" >> metrics',
-            'echo "nginx_vts_upstream_foo 100" >> metrics',
-            'echo "# TYPE nginx_vts_foo_request_seconds gauge" >> metrics',
-            'echo "nginx_vts_foo_request_seconds 100" >> metrics',
-
-            'echo "Serving prometheus metrics on http://localhost:8000"',
-            'python3 -m http.server 8000',
-        ]),
+        'cmd': '\n'.join(
+            [
+                'echo "Creating metrics file..."',
+                f'echo "# TYPE {metric_name_pfx}_gauge gauge" >> metrics',
+                'echo "{}_gauge{{direction=\\"1xx\\"}} 100" >> metrics'.format(
+                    metric_name_pfx
+                ),
+                'echo "# TYPE nginx_vts_filter_cache_foo gauge" >> metrics',
+                'echo "nginx_vts_filter_cache_foo 100" >> metrics',
+                'echo "# TYPE nginx_vts_server_foo gauge" >> metrics',
+                'echo "nginx_vts_server_foo 100" >> metrics',
+                'echo "# TYPE nginx_vts_upstream_foo gauge" >> metrics',
+                'echo "nginx_vts_upstream_foo 100" >> metrics',
+                'echo "# TYPE nginx_vts_foo_request_seconds gauge" >> metrics',
+                'echo "nginx_vts_foo_request_seconds 100" >> metrics',
+                'echo "Serving prometheus metrics on http://localhost:8000"',
+                'python3 -m http.server 8000',
+            ]
+        ),
         'networks': [{'mode': 'container/bridge'}],
         'container': {
             'type': 'MESOS',
@@ -1051,9 +1044,10 @@ def test_task_prom_metrics_not_filtered(dcos_api_session: DcosApiSession) -> Non
                     'protocol': 'tcp',
                     'labels': {'DCOS_METRICS_FORMAT': 'prometheus'},
                 }
-            ]
+            ],
         },
     }
+
 
     logging.debug('Starting marathon app with config: %s', marathon_app)
     expected_metrics = [
@@ -1073,24 +1067,24 @@ def test_metrics_containers_nan(dcos_api_session: DcosApiSession) -> None:
     task_name = 'test-metrics-containers-nan'
     metric_name = 'test_metrics_containers_nan'
     marathon_app = {
-        'id': '/' + task_name,
+        'id': f'/{task_name}',
         'instances': 1,
         'cpus': 0.1,
         'mem': 128,
-        'cmd': '\n'.join([
-            'echo "Sending gauge with NaN value to $STATSD_UDP_HOST:$STATSD_UDP_PORT"',
-            'echo "{}:NaN|g" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT'.format(metric_name),
-            'echo "Done. Sleeping forever."',
-            'while true; do',
-            '  sleep 1000',
-            'done',
-        ]),
-        'container': {
-            'type': 'MESOS',
-            'docker': {'image': 'library/alpine'}
-        },
+        'cmd': '\n'.join(
+            [
+                'echo "Sending gauge with NaN value to $STATSD_UDP_HOST:$STATSD_UDP_PORT"',
+                f'echo "{metric_name}:NaN|g" | nc -w 1 -u $STATSD_UDP_HOST $STATSD_UDP_PORT',
+                'echo "Done. Sleeping forever."',
+                'while true; do',
+                '  sleep 1000',
+                'done',
+            ]
+        ),
+        'container': {'type': 'MESOS', 'docker': {'image': 'library/alpine'}},
         'networks': [{'mode': 'host'}],
     }
+
     with dcos_api_session.marathon.deploy_and_cleanup(marathon_app, check_health=False, timeout=DEPLOY_TIMEOUT):
         endpoints = dcos_api_session.marathon.get_app_service_endpoints(marathon_app['id'])
         assert len(endpoints) == 1, 'The marathon app should have been deployed exactly once.'
@@ -1098,7 +1092,7 @@ def test_metrics_containers_nan(dcos_api_session: DcosApiSession) -> None:
 
         # NaN should be converted to empty string.
         metric_value = get_app_metric_for_task(dcos_api_session, node, task_name, metric_name)['value']
-        assert metric_value == '', 'unexpected metric value: {}'.format(metric_value)
+        assert metric_value == '', f'unexpected metric value: {metric_value}'
 
 
 @retrying.retry(wait_fixed=METRICS_INTERVAL, stop_max_delay=METRICS_WAITTIME)
@@ -1122,9 +1116,12 @@ def get_app_metric_for_task(dcos_api_session: DcosApiSession, node: str, task_na
 
     """
     _, app_metrics = get_metrics_for_task(dcos_api_session, node, task_name)
-    assert app_metrics is not None, "missing metrics for task {}".format(task_name)
+    assert app_metrics is not None, f"missing metrics for task {task_name}"
     dps = [dp for dp in app_metrics['datapoints'] if dp['name'] == metric_name]
-    assert len(dps) == 1, 'expected 1 datapoint for metric {}, got {}'.format(metric_name, len(dps))
+    assert (
+        len(dps) == 1
+    ), f'expected 1 datapoint for metric {metric_name}, got {len(dps)}'
+
     return dps[0]
 
 
@@ -1154,7 +1151,10 @@ def get_container_metrics(dcos_api_session: DcosApiSession, node: str, container
     to 5 minutes.
 
     """
-    response = dcos_api_session.metrics.get('/containers/' + container_id, node=node)
+    response = dcos_api_session.metrics.get(
+        f'/containers/{container_id}', node=node
+    )
+
 
     if response.status_code == 204:
         return None
@@ -1162,12 +1162,14 @@ def get_container_metrics(dcos_api_session: DcosApiSession, node: str, container
     assert response.status_code == 200
     container_metrics = response.json()
 
-    assert 'datapoints' in container_metrics, (
-        'container metrics must include datapoints. Got: {}'.format(container_metrics)
-    )
-    assert 'dimensions' in container_metrics, (
-        'container metrics must include dimensions. Got: {}'.format(container_metrics)
-    )
+    assert (
+        'datapoints' in container_metrics
+    ), f'container metrics must include datapoints. Got: {container_metrics}'
+
+    assert (
+        'dimensions' in container_metrics
+    ), f'container metrics must include dimensions. Got: {container_metrics}'
+
 
     return container_metrics
 
@@ -1181,16 +1183,19 @@ def get_app_metrics(dcos_api_session: DcosApiSession, node: str, container_id: s
     Retries on error or non-200 status for up to 5 minutes.
 
     """
-    resp = dcos_api_session.metrics.get('/containers/' + container_id + '/app', node=node)
+    resp = dcos_api_session.metrics.get(
+        f'/containers/{container_id}/app', node=node
+    )
+
 
     if resp.status_code == 204:
         return None
 
-    assert resp.status_code == 200, 'got {}'.format(resp.status_code)
+    assert resp.status_code == 200, f'got {resp.status_code}'
     app_metrics = resp.json()
 
-    assert 'datapoints' in app_metrics, 'got {}'.format(app_metrics)
-    assert 'dimensions' in app_metrics, 'got {}'.format(app_metrics)
+    assert 'datapoints' in app_metrics, f'got {app_metrics}'
+    assert 'dimensions' in app_metrics, f'got {app_metrics}'
 
     return app_metrics
 
@@ -1220,7 +1225,7 @@ def get_metrics_for_task(dcos_api_session: DcosApiSession, node: str, task_name:
         return container_metrics, app_metrics
 
     raise Exception(
-        'No metrics found for task {} on host {}. Task names seen: {}'.format(task_name, node, task_names_seen)
+        f'No metrics found for task {task_name} on host {node}. Task names seen: {task_names_seen}'
     )
 
 
@@ -1267,7 +1272,7 @@ def test_standalone_container_metrics(dcos_api_session: DcosApiSession) -> None:
         return r
 
     # Prepare container ID data
-    container_id = {'value': 'test-standalone-%s' % str(uuid.uuid4())}
+    container_id = {'value': f'test-standalone-{str(uuid.uuid4())}'}
 
     # Launch standalone container. The command for this container executes a
     # binary installed with DC/OS which will emit statsd metrics.
@@ -1312,13 +1317,15 @@ def test_standalone_container_metrics(dcos_api_session: DcosApiSession) -> None:
         return response.status_code == 204
 
     @retrying.retry(wait_fixed=METRICS_INTERVAL,
-                    stop_max_delay=METRICS_WAITTIME,
-                    retry_on_result=_should_retry_metrics_fetch,
-                    retry_on_exception=lambda x: False)
+                        stop_max_delay=METRICS_WAITTIME,
+                        retry_on_result=_should_retry_metrics_fetch,
+                        retry_on_exception=lambda x: False)
     def _get_metrics() -> Any:
         master_response = dcos_api_session.get(
-            '/system/v1/agent/%s/metrics/v0/containers/%s/app' % (agent_id, container_id['value']),
-            host=master_ip)
+            f"/system/v1/agent/{agent_id}/metrics/v0/containers/{container_id['value']}/app",
+            host=master_ip,
+        )
+
         return master_response
 
     r = _post_agent(launch_data)

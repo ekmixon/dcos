@@ -94,10 +94,7 @@ class TestGRPC:
             ),
         )
 
-        received = []
-        for message in response:
-            received.append(message.messageID)
-
+        received = [message.messageID for message in response]
         assert messageIDs == received
 
     def test_serverstream_unauthn(self, master_ar_process, grpc_stub):

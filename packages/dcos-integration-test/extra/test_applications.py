@@ -35,30 +35,40 @@ def deploy_test_app_and_check(dcos_api_session: DcosApiSession, app: dict, test_
         marathon_user = app.get('user', default_os_user)
     with dcos_api_session.marathon.deploy_and_cleanup(app):
         service_points = dcos_api_session.marathon.get_app_service_endpoints(app['id'])
-        r = requests.get('http://{}:{}/test_uuid'.format(service_points[0].host, service_points[0].port))
+        r = requests.get(
+            f'http://{service_points[0].host}:{service_points[0].port}/test_uuid'
+        )
+
         if r.status_code != 200:
-            msg = "Test server replied with non-200 reply: '{0} {1}. "
-            msg += "Detailed explanation of the problem: {2}"
+            msg = (
+                "Test server replied with non-200 reply: '{0} {1}. "
+                + "Detailed explanation of the problem: {2}"
+            )
+
             raise Exception(msg.format(r.status_code, r.reason, r.text))
 
         r_data = r.json()
 
         assert r_data['test_uuid'] == test_uuid
 
-        r = requests.get('http://{}:{}/operating_environment'.format(
-            service_points[0].host,
-            service_points[0].port))
+        r = requests.get(
+            f'http://{service_points[0].host}:{service_points[0].port}/operating_environment'
+        )
+
 
         if r.status_code != 200:
-            msg = "Test server replied with non-200 reply: '{0} {1}. "
-            msg += "Detailed explanation of the problem: {2}"
+            msg = (
+                "Test server replied with non-200 reply: '{0} {1}. "
+                + "Detailed explanation of the problem: {2}"
+            )
+
             raise Exception(msg.format(r.status_code, r.reason, r.text))
 
         json_uid = r.json()['uid']
         if marathon_user == 'root':
             assert json_uid == 0, "App running as root should have uid 0."
         else:
-            assert json_uid != 0, ("App running as {} should not have uid 0.".format(marathon_user))
+            assert json_uid != 0, f"App running as {marathon_user} should not have uid 0."
 
 
 @pytest.mark.first
@@ -288,7 +298,7 @@ def test_if_marathon_pods_can_be_deployed_with_mesos_containerizer(dcos_api_sess
 
     # create pod with trivial apps that function as long running processes
     pod_definition = {
-        'id': '/integration-test-pods-{}'.format(test_uuid),
+        'id': f'/integration-test-pods-{test_uuid}',
         'scaling': {'kind': 'fixed', 'instances': 1},
         'environment': {'PING': 'PONG'},
         'containers': [
@@ -296,18 +306,29 @@ def test_if_marathon_pods_can_be_deployed_with_mesos_containerizer(dcos_api_sess
                 'name': 'ct1',
                 'resources': {'cpus': 0.1, 'mem': 32},
                 'image': {'kind': 'DOCKER', 'id': 'debian:stretch-slim'},
-                'exec': {'command': {'shell': 'touch foo; while true; do sleep 1; done'}},
-                'healthcheck': {'command': {'shell': 'test -f foo'}}
+                'exec': {
+                    'command': {
+                        'shell': 'touch foo; while true; do sleep 1; done'
+                    }
+                },
+                'healthcheck': {'command': {'shell': 'test -f foo'}},
             },
             {
                 'name': 'ct2',
                 'resources': {'cpus': 0.1, 'mem': 32},
-                'exec': {'command': {'shell': 'echo $PING > foo; while true; do sleep 1; done'}},
-                'healthcheck': {'command': {'shell': 'test $PING = `cat foo`'}}
-            }
+                'exec': {
+                    'command': {
+                        'shell': 'echo $PING > foo; while true; do sleep 1; done'
+                    }
+                },
+                'healthcheck': {
+                    'command': {'shell': 'test $PING = `cat foo`'}
+                },
+            },
         ],
-        'networks': [{'mode': 'host'}]
+        'networks': [{'mode': 'host'}],
     }
+
 
     with dcos_api_session.marathon.deploy_pod_and_cleanup(pod_definition):
         # Trivial app if it deploys, there is nothing else to check

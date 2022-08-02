@@ -64,14 +64,7 @@ def docker_network_three_available_addresses() -> Iterator[Network]:
         network.remove()
 
 
-@pytest.mark.skipif(
-    only_changed(E2E_SAFE_DEFAULT + [
-        'packages/dcos-integration-test/**',
-        # All e2e tests safe except this test
-        'test-e2e/test_*', '!' + escape(trailing_path(__file__, 2)),
-    ]),
-    reason='Only safe files modified',
-)
+@pytest.mark.skipif(only_changed((E2E_SAFE_DEFAULT + ['packages/dcos-integration-test/**', 'test-e2e/test_*', f'!{escape(trailing_path(__file__, 2))}'])), reason='Only safe files modified')
 def test_replace_all_static(
     artifact_path: Path,
     docker_network_three_available_addresses: Network,

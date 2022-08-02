@@ -6,6 +6,7 @@ Regex in check_rules.py module. New plugins can be introduced by following the f
 (http://flake8.pycqa.org/en/latest/plugin-development/index.html). And they will automatically be run as part of the
 syntax-check.
 """
+
 from __version__ import PLUGIN_NAME, PLUGIN_VERSION
 
 from setuptools import setup
@@ -19,11 +20,7 @@ setup(
         'pycodestyle==2.2.0',
         'flake8==3.3.0',
         'flake8-import-order==0.9.2',
-        'pep8-naming==0.7.0'
+        'pep8-naming==0.7.0',
     ],
-    entry_points={
-        'flake8.extension': [
-            '{} = checker:check'.format(PLUGIN_NAME),
-        ],
-    }
+    entry_points={'flake8.extension': [f'{PLUGIN_NAME} = checker:check']},
 )

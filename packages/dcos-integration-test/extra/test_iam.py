@@ -65,9 +65,10 @@ def test_service_account_create_login_delete(dcos_api_session: DcosApiSession, n
     # Create service user account, share the public key with the IAM.
     serviceuid = 'testservice'
     r = dcos_api_session.put(
-        '/acs/api/v1/users/' + serviceuid,
-        json={'description': 'foo', 'public_key': default_rsa_pubkey}
+        f'/acs/api/v1/users/{serviceuid}',
+        json={'description': 'foo', 'public_key': default_rsa_pubkey},
     )
+
     assert r.status_code == 201, r.text
 
     # Generate short-lived service login token (RS256 JWT signed with
@@ -105,7 +106,7 @@ def test_service_account_create_login_delete(dcos_api_session: DcosApiSession, n
     assert serviceuid in uids
 
     # Delete the service user account.
-    r = dcos_api_session.delete('/acs/api/v1/users/' + serviceuid)
+    r = dcos_api_session.delete(f'/acs/api/v1/users/{serviceuid}')
     assert r.status_code == 204
 
     # Confirm that service does not appear in collection anymore.
@@ -120,9 +121,10 @@ def test_user_account_create_login_delete(dcos_api_session: DcosApiSession, noau
     password = str(uuid.uuid4())
 
     r = dcos_api_session.put(
-        '/acs/api/v1/users/' + uid,
+        f'/acs/api/v1/users/{uid}',
         json={'description': str(uuid.uuid4()), 'password': password},
     )
+
     assert r.status_code == 201
 
     r = noauth_api_session.post(
@@ -134,16 +136,17 @@ def test_user_account_create_login_delete(dcos_api_session: DcosApiSession, noau
 
     dcos_url = str(dcos_api_session.default_url)
     r = requests.get(
-        dcos_url + '/pkgpanda/active.buildinfo.full.json',
-        headers={'Authorization': 'token=' + r.json()['token']}
+        f'{dcos_url}/pkgpanda/active.buildinfo.full.json',
+        headers={'Authorization': 'token=' + r.json()['token']},
     )
+
     assert r.status_code == 200
 
     r = dcos_api_session.get('/acs/api/v1/users/')
     uids = [o['uid'] for o in r.json()['array']]
     assert uid in uids
 
-    r = dcos_api_session.delete('/acs/api/v1/users/' + uid)
+    r = dcos_api_session.delete(f'/acs/api/v1/users/{uid}')
     assert r.status_code == 204
 
     r = dcos_api_session.get('/acs/api/v1/users/')

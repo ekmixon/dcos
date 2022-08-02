@@ -22,7 +22,7 @@ def package(resource_dir, name, tmpdir):
         check_call(["mkpanda"])
 
     # Build once using programmatic interface
-    pkg_dir_2 = str(tmpdir.join("api-build/" + name))
+    pkg_dir_2 = str(tmpdir.join(f"api-build/{name}"))
     copytree(resource_dir, pkg_dir_2)
     package_store = pkgpanda.build.PackageStore(str(tmpdir.join("api-build")), None)
     return pkgpanda.build.build_package_variants(package_store, name, True)
@@ -74,7 +74,7 @@ def test_single_source_with_extra(tmpdir):
     # remove the built package tarball because that has a variable filename
     cache_dir = tmpdir.join("cache/packages/single_source_extra/")
     packages = [str(x) for x in cache_dir.visit(fil="single_source_extra*.tar.xz")]
-    assert len(packages) == 1, "should have built exactly one package: {}".format(packages)
+    assert len(packages) == 1, f"should have built exactly one package: {packages}"
     os.remove(packages[0])
 
     expect_fs(str(cache_dir), {
@@ -143,11 +143,11 @@ def test_bootstrap(tmpdir):
         pkg_dir.join("treeinfo.json").write(json.dumps(treeinfo), ensure=True)
         check_call(["mkpanda", "tree", "--mkbootstrap"])
         cache_dir = str(pkg_dir.join("cache/bootstrap")) + "/"
-        bootstrap_id = open(cache_dir + "bootstrap.latest", 'r').read().strip()
+        bootstrap_id = open(f"{cache_dir}bootstrap.latest", 'r').read().strip()
         bootstrap_files = get_tar_contents(cache_dir + bootstrap_id + ".bootstrap.tar.xz")
 
         # Seperate files that come from individual packages from those in the root directory
-        package_files = dict()
+        package_files = {}
         merged_files = set()
         for path in bootstrap_files:
             if not path.startswith("./packages/"):
@@ -165,7 +165,7 @@ def test_bootstrap(tmpdir):
             file_set = package_files.get(package_name, set())
 
             # don't add the package directory / empty path.
-            if len(file_path) == 0:
+            if not file_path:
                 continue
             file_set.add(file_path)
             package_files[package_name] = file_set
@@ -189,9 +189,10 @@ def test_bootstrap(tmpdir):
             './etc/',
             './etc/dcos-service-configuration.json',
             './lib/',
-            './lib/',
             './lib/libmesos.so',
-            './include/'}
+            './include/',
+        }
+
 
         assert package_files == {
             'url_extract-zip': {'pkginfo.json', 'buildinfo.full.json'},

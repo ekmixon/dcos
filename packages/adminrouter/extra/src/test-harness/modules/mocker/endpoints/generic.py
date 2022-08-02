@@ -49,10 +49,7 @@ class EndpointContext:
             initial_data (dict): initial data to initialize context with
         """
         self.lock = threading.RLock()
-        if initial_data is not None:
-            self.data = initial_data
-        else:
-            self.data = {}
+        self.data = initial_data if initial_data is not None else {}
 
 
 class Endpoint(abc.ABC):
@@ -247,9 +244,9 @@ class TcpIpHttpEndpoint(HTTPEndpoint):
             certfile(str): path to the certificate to be used by server (if any)
         """
         if certfile is not None and keyfile is not None:
-            endpoint_id = "https://{}:{}".format(ip, port)
+            endpoint_id = f"https://{ip}:{port}"
         else:
-            endpoint_id = "http://{}:{}".format(ip, port)
+            endpoint_id = f"http://{ip}:{port}"
         super().__init__(endpoint_id)
 
         self._context.data['listen_ip'] = ip
@@ -269,7 +266,7 @@ class TcpIpHttpEndpoint(HTTPEndpoint):
                                           (ip, port),
                                           self._handler_class)
 
-        httpd_thread_name = "TcpIpHttpdThread-{}".format(self.id)
+        httpd_thread_name = f"TcpIpHttpdThread-{self.id}"
         self._httpd_thread = threading.Thread(target=self._httpd.serve_forever,
                                               name=httpd_thread_name)
 
@@ -330,9 +327,9 @@ class UnixSocketHTTPEndpoint(HTTPEndpoint):
             certfile(str): path to the certificate to be used by server (if any)
         """
         if certfile is not None and keyfile is not None:
-            endpoint_id = "https://{}".format(path)
+            endpoint_id = f"https://{path}"
         else:
-            endpoint_id = "http://{}".format(path)
+            endpoint_id = f"http://{path}"
         super().__init__(endpoint_id)
 
         self._context.data['socket_path'] = path
@@ -361,7 +358,7 @@ class UnixSocketHTTPEndpoint(HTTPEndpoint):
                                                    socket_path,
                                                    self._handler_class)
 
-        httpd_thread_name = "UnixSocketHttpdThread-{}".format(self.id)
+        httpd_thread_name = f"UnixSocketHttpdThread-{self.id}"
         self._httpd_thread = threading.Thread(target=self._httpd.serve_forever,
                                               name=httpd_thread_name)
 

@@ -52,7 +52,7 @@ def _verify_tests_conf(tests_conf):
 
 
 def _verify_type_specification(types):
-    assert len(set(types)) in [1, 2]
+    assert len(set(types)) in {1, 2}
     for k in types:
         assert k in ['master', 'agent']
 
@@ -255,14 +255,16 @@ def _testdata_to_location_header_rewrite_testdata(tests_config, node_type):
 
         h = x['tests']['is_location_header_rewritten']
 
-        for l in h['redirect_testscases']:
-            res.append(
-                (h['endpoint_id'],
-                 h['basepath'],
-                 l['location_set'],
-                 l['location_expected'],
-                 h.get("vhost", None)),
+        res.extend(
+            (
+                h['endpoint_id'],
+                h['basepath'],
+                l['location_set'],
+                l['location_expected'],
+                h.get("vhost", None),
             )
+            for l in h['redirect_testscases']
+        )
 
     return res
 
@@ -279,9 +281,7 @@ def _testdata_to_is_unauthed_access_permitted(tests_config, node_type):
 
         h = x['tests']['is_unauthed_access_permitted']
 
-        for p in h['locations']:
-            res.append((p, h.get("vhost", None)))
-
+        res.extend((p, h.get("vhost", None)) for p in h['locations'])
     return res
 
 
@@ -318,8 +318,10 @@ def _testdata_to_redirect_testdata(tests_config, node_type):
 
         h = x['tests']['is_endpoint_redirecting_properly']
 
-        for l in h['locations']:
-            res.append((l['path'], l['code'], h.get("vhost", None)))
+        res.extend(
+            (l['path'], l['code'], h.get("vhost", None))
+            for l in h['locations']
+        )
 
     return res
 
@@ -354,17 +356,10 @@ def _universal_test_if_upstream_headers_are_correct(
         return
 
     filtered_cookies = ['dcos-acs-info-cookie', 'dcos-acs-auth-cookie']
-    jar = {}
-    # both dcos-* cookies should be removed by AR
-    # the dcos-acs-auth-cookie cookie is simply the DC/OS authentication token:
-    jar['dcos-acs-auth-cookie'] = req_headers['Authorization']
-    # the dcos-acs-info-cookie is a base64-encoded JSON-encoded dictionary
-    # which contains `uid`, `descrption` and `is_remote` fields which relate to
-    # the DC/OS authentication token from the `dcos-acs-auth-cookie` cookie.
-    jar['dcos-acs-info-cookie'] = (
-        'eyJ1aWQiOiAiYm9vdHN0cmFwdXNlciIsICJkZX'
-        'NjcmlwdGlvbiI6ICJCb290c3RyYXAgc3VwZXJ1c2VyIiwgImlzX3JlbW90ZSI6IGZ'
-        'hbHNlfQ==')
+    jar = {
+        'dcos-acs-auth-cookie': req_headers['Authorization'],
+        'dcos-acs-info-cookie': 'eyJ1aWQiOiAiYm9vdHN0cmFwdXNlciIsICJkZXNjcmlwdGlvbiI6ICJCb290c3RyYXAgc3VwZXJ1c2VyIiwgImlzX3JlbW90ZSI6IGZhbHNlfQ==',
+    }
 
     # First case - cookie contains ONLY dcos-specific cookies, `Cookie` header
     # should not be sent
@@ -379,7 +374,7 @@ def _universal_test_if_upstream_headers_are_correct(
     # Second case - apart from dcos-specific cookies, client also sends
     # a cookie that must be forwarded upstream:
     cookies_present = {'some-random-cookie': 'some-random-value'}
-    jar.update(cookies_present)
+    jar |= cookies_present
     generic_upstream_cookies_verify_test(
         ar_process,
         req_headers,
@@ -397,19 +392,19 @@ def create_tests(metafunc, path):
     else:
         ar_type = 'agent'
 
-    if set(['path', 'expected_upstream']) <= set(metafunc.fixturenames):
+    if {'path', 'expected_upstream'} <= set(metafunc.fixturenames):
         args = _testdata_to_is_upstream_correct_testdata(tests_config, ar_type)
         metafunc.parametrize("path,expected_upstream,vhost", args)
         return
 
-    if set(['path', 'jwt_forwarded_test']) <= set(metafunc.fixturenames):
+    if {'path', 'jwt_forwarded_test'} <= set(metafunc.fixturenames):
         args = _testdata_to_are_upstream_req_headers_ok_testdata(tests_config, ar_type)
         metafunc.parametrize(
             "path,jwt_forwarded_test,skip_authcookie_filtering_test,vhost",
             args)
         return
 
-    if set(['path', 'upstream_path', 'http_ver']) <= set(metafunc.fixturenames):
+    if {'path', 'upstream_path', 'http_ver'} <= set(metafunc.fixturenames):
         args = _testdata_to_is_upstream_req_ok_testdata(tests_config, ar_type)
         metafunc.parametrize("path,upstream_path,http_ver,vhost", args)
         return
@@ -529,11 +524,7 @@ class GenericTestMasterClass:
     def test_redirect_req_without_slash(
             self, master_ar_process_perclass, redirect_path, code, vhost):
 
-        if vhost is not None:
-            req_headers = {"Host": vhost}
-        else:
-            req_headers = {}
-
+        req_headers = {"Host": vhost} if vhost is not None else {}
         generic_no_slash_redirect_test(
             master_ar_process_perclass,
             redirect_path,
@@ -544,11 +535,7 @@ class GenericTestMasterClass:
     def test_if_unauthn_user_is_granted_access(
             self, master_ar_process_perclass, unauthed_path, vhost):
 
-        if vhost is not None:
-            req_headers = {"Host": vhost}
-        else:
-            req_headers = {}
-
+        req_headers = {"Host": vhost} if vhost is not None else {}
         assert_endpoint_response(
             master_ar_process_perclass,
             unauthed_path,
@@ -564,19 +551,15 @@ class GenericTestMasterClass:
             expect_http_status,
             vhost):
 
-        headers_present = {}
         headers_absent = []
 
-        headers_present['Server'] = "openresty"
-
+        headers_present = {'Server': "openresty"}
         if caching_headers_test is True:
             headers_present['Cache-Control'] = "no-cache, no-store, must-revalidate"
             headers_present['Pragma'] = "no-cache"
             headers_present['Expires'] = "0"
         elif caching_headers_test is False:
-            headers_absent.append("Cache-Control")
-            headers_absent.append("Pragma")
-            headers_absent.append("Expires")
+            headers_absent.extend(("Cache-Control", "Pragma", "Expires"))
         # caching_headers_test == "skip", do nothing
 
         req_headers = copy.deepcopy(valid_user_header)
@@ -684,11 +667,7 @@ class GenericTestAgentClass:
     def test_redirect_req_without_slash(
             self, agent_ar_process_perclass, redirect_path, code, vhost):
 
-        if vhost is not None:
-            req_headers = {"Host": vhost}
-        else:
-            req_headers = {}
-
+        req_headers = {"Host": vhost} if vhost is not None else {}
         generic_no_slash_redirect_test(
             agent_ar_process_perclass,
             redirect_path,
@@ -698,11 +677,7 @@ class GenericTestAgentClass:
     def test_if_unauthn_user_is_granted_access(
             self, agent_ar_process_perclass, unauthed_path, vhost):
 
-        if vhost is not None:
-            req_headers = {"Host": vhost}
-        else:
-            req_headers = {}
-
+        req_headers = {"Host": vhost} if vhost is not None else {}
         assert_endpoint_response(
             agent_ar_process_perclass,
             unauthed_path,
@@ -718,19 +693,15 @@ class GenericTestAgentClass:
             expect_http_status,
             vhost):
 
-        headers_present = {}
         headers_absent = []
 
-        headers_present['Server'] = "openresty"
-
+        headers_present = {'Server': "openresty"}
         if caching_headers_test is True:
             headers_present['Cache-Control'] = "no-cache, no-store, must-revalidate"
             headers_present['Pragma'] = "no-cache"
             headers_present['Expires'] = "0"
         elif caching_headers_test is False:
-            headers_absent.append("Cache-Control")
-            headers_absent.append("Pragma")
-            headers_absent.append("Expires")
+            headers_absent.extend(("Cache-Control", "Pragma", "Expires"))
         # caching_headers_test == "skip", do nothing
 
         req_headers = copy.deepcopy(valid_user_header)

@@ -321,9 +321,7 @@ def valid_user_header(jwt_generator):
     """This fixture further simplifies JWT handling by providing a ready-to-use
     headers with a valid JSON Web Token for `requests` module to use"""
     token = jwt_generator(uid='bozydar')
-    header = {'Authorization': 'token={}'.format(token)}
-
-    return header
+    return {'Authorization': f'token={token}'}
 
 
 @pytest.fixture(scope='session')
@@ -344,8 +342,7 @@ def forged_user_header(jwt_generator):
             header_bytes, payload_bytes, signature_bytes)
         )
 
-    header = {'Authorization': 'token={}'.format(forged_token)}
-    return header
+    return {'Authorization': f'token={forged_token}'}
 
 
 @pytest.fixture(scope='function')
@@ -359,5 +356,4 @@ def grpc_stub(repo_is_ee):
     else:
         channel = grpc.insecure_channel('localhost:12379')
     with channel:
-        stub = grpc_endpoint_pb2_grpc.MockServiceStub(channel)
-        yield stub
+        yield grpc_endpoint_pb2_grpc.MockServiceStub(channel)

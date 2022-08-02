@@ -35,9 +35,10 @@ def dump_database(my_internal_ip: str, out: Union[IO[bytes], IO[str]]) -> None:
         '/opt/mesosphere/active/cockroach/bin/cockroach',
         'dump',
         '--insecure',
-        '--host={}'.format(my_internal_ip),
+        f'--host={my_internal_ip}',
         'iam',
-        ]
+    ]
+
     log.info('Dump iam database via command `%s`', ' '.join(command))
     try:
         subprocess.run(command, check=True, stdout=out)
@@ -62,11 +63,11 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     # Determine the internal IP address of this node.
     my_internal_ip = utils.detect_ip()
-    log.info('My internal IP address is `{}`'.format(my_internal_ip))
+    log.info(f'My internal IP address is `{my_internal_ip}`')
 
     args = _parse_args()
     if args.backup_file_path:
-        log.info('Write backup to: {}'.format(args.backup_file_path))
+        log.info(f'Write backup to: {args.backup_file_path}')
     else:
         log.info('Write backup to: STDOUT')
 

@@ -33,8 +33,7 @@ class AbstractStorageProvider(metaclass=abc.ABCMeta):
         pass
 
     def download(self, path, local_path):
-        dirname = os.path.dirname(local_path)
-        if dirname:
+        if dirname := os.path.dirname(local_path):
             make_directory(dirname)
         self.download_inner(path, local_path)
 

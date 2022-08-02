@@ -285,7 +285,7 @@ def main():
     opts = parse_args()
 
     # Display the pid in each log message to distinguish concurrent runs
-    log_format = 'pid={}:[%(levelname)s] %(message)s'.format(os.getpid())
+    log_format = f'pid={os.getpid()}:[%(levelname)s] %(message)s'
     logging.basicConfig(format=log_format, level='INFO')
     log.setLevel(logging.DEBUG)
 
@@ -301,10 +301,10 @@ def main():
 
     for service in opts.services:
         if service not in bootstrappers:
-            log.error('Unknown service: {}'.format(service))
+            log.error(f'Unknown service: {service}')
             sys.exit(1)
         utils.apply_service_configuration(service)
-        log.info('bootstrapping {}'.format(service))
+        log.info(f'bootstrapping {service}')
         bootstrappers[service](b, opts)
 
 
@@ -319,7 +319,7 @@ def get_zookeeper_address_agent():
         with (utils.dcos_etc_path / 'master_list').open() as f:
             master_list = json.load(f)
         assert len(master_list) > 0
-        return random.choice(master_list) + ':2181'
+        return f'{random.choice(master_list)}:2181'
     elif os.getenv('EXHIBITOR_ADDRESS'):
         # dcos-net agents on AWS
         return os.getenv('EXHIBITOR_ADDRESS') + ':2181'
@@ -337,7 +337,7 @@ def get_zookeeper_address():
     if 'slave' in roles or 'slave_public' in roles:
         return get_zookeeper_address_agent()
 
-    raise Exception("Can't get zookeeper address. Unknown role: {}".format(roles))
+    raise Exception(f"Can't get zookeeper address. Unknown role: {roles}")
 
 
 def parse_args():

@@ -52,8 +52,7 @@ def artifact_path() -> Path:
     """
     Return the path to a DC/OS build artifact to test against.
     """
-    generate_config_path = Path(os.environ['DCOS_E2E_GENCONF_PATH'])
-    return generate_config_path
+    return Path(os.environ['DCOS_E2E_GENCONF_PATH'])
 
 
 @pytest.fixture(scope='session')
@@ -145,10 +144,11 @@ def zookeeper_backend() -> Generator[Container, None, None]:
     client = docker.from_env(version='auto')
     zookeeper = client.containers.run(
         image='digitalwonderland/zookeeper',
-        name='zk-backend-{}'.format(ts),
+        name=f'zk-backend-{ts}',
         environment={'ZOOKEEPER_TICK_TIME': 100},
         detach=True,
     )
+
     zookeeper.reload()
     try:
         yield zookeeper

@@ -87,8 +87,10 @@ def test_if_marathon_app_can_be_debugged(dcos_api_session: DcosApiSession) -> No
 
         # Prepare nested container id data
         nested_container_id = {
-            'value': 'debug-%s' % str(uuid.uuid4()),
-            'parent': {'value': '%s' % container_id}}
+            'value': f'debug-{str(uuid.uuid4())}',
+            'parent': {'value': f'{container_id}'},
+        }
+
 
         # Launch debug session and attach to output stream of debug container
         output_headers = {
@@ -152,13 +154,16 @@ def test_files_api(dcos_api_session: DcosApiSession) -> None:
 
     with dcos_api_session.marathon.deploy_and_cleanup(app):
         marathon_framework_id = dcos_api_session.marathon.get('/v2/info').json()['frameworkId']
-        app_task = dcos_api_session.marathon.get('/v2/apps/{}/tasks'.format(app['id'])).json()['tasks'][0]
+        app_task = dcos_api_session.marathon.get(
+            f"/v2/apps/{app['id']}/tasks"
+        ).json()['tasks'][0]
+
 
         for required_sandbox_file in ('stdout', 'stderr'):
             content = dcos_api_session.mesos_sandbox_file(
                 app_task['slaveId'], marathon_framework_id, app_task['id'], required_sandbox_file)
 
-            assert content, 'File {} should not be empty'.format(required_sandbox_file)
+            assert content, f'File {required_sandbox_file} should not be empty'
 
 
 def test_if_ucr_app_runs_in_new_pid_namespace(dcos_api_session: DcosApiSession) -> None:
@@ -311,16 +316,16 @@ def test_blkio_stats(dcos_api_session: DcosApiSession) -> None:
 def get_region_zone(domain: dict) -> tuple:
     assert isinstance(domain, dict), 'input must be dict'
 
-    assert 'fault_domain' in domain, 'fault_domain is missing. {}'.format(domain)
+    assert 'fault_domain' in domain, f'fault_domain is missing. {domain}'
 
     # check region set correctly
-    assert 'region' in domain['fault_domain'], 'missing region. {}'.format(domain)
-    assert 'name' in domain['fault_domain']['region'], 'missing region. {}'.format(domain)
+    assert 'region' in domain['fault_domain'], f'missing region. {domain}'
+    assert 'name' in domain['fault_domain']['region'], f'missing region. {domain}'
     region = domain['fault_domain']['region']['name']
 
     # check zone set correctly
-    assert 'zone' in domain['fault_domain'], 'missing zone. {}'.format(domain)
-    assert 'name' in domain['fault_domain']['zone'], 'missing zone. {}'.format(domain)
+    assert 'zone' in domain['fault_domain'], f'missing zone. {domain}'
+    assert 'name' in domain['fault_domain']['zone'], f'missing zone. {domain}'
     zone = domain['fault_domain']['zone']['name']
 
     return region, zone
@@ -346,14 +351,23 @@ def test_fault_domain(dcos_api_session: DcosApiSession) -> None:
     assert 'domain' in state['leader_info'], 'domain is missing in state json'
     leader_region, leader_zone = get_region_zone(state['leader_info']['domain'])
 
-    assert leader_region == expected_region, 'expect region {}. Got {}'.format(expected_region, leader_region)
-    assert leader_zone == expected_zone, 'expect zone {}. Got {}'.format(expected_zone, leader_zone)
+    assert (
+        leader_region == expected_region
+    ), f'expect region {expected_region}. Got {leader_region}'
+
+    assert (
+        leader_zone == expected_zone
+    ), f'expect zone {expected_zone}. Got {leader_zone}'
+
 
     for agent in state['slaves']:
-        assert 'domain' in agent, 'missing domain field for agent. {}'.format(agent)
+        assert 'domain' in agent, f'missing domain field for agent. {agent}'
         agent_region, agent_zone = get_region_zone(agent['domain'])
 
-        assert agent_region == expected_region, 'expect region {}. Got {}'.format(expected_region, agent_region)
+        assert (
+            agent_region == expected_region
+        ), f'expect region {expected_region}. Got {agent_region}'
+
 
         # agent_zone might be different on agents, so we just make sure it's a sane value
         assert agent_zone, 'agent_zone cannot be empty'
@@ -399,7 +413,7 @@ def reserved_disk(dcos_api_session: DcosApiSession) -> Generator:
 
         # Create a unique role to reserve the disk to. The test framework should
         # register in this role.
-        dcos_api_session.role = 'disk-' + uuid.uuid4().hex
+        dcos_api_session.role = f'disk-{uuid.uuid4().hex}'
 
         resources1 = {
             'agent_id': {'value': slave_id},

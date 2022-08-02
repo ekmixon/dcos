@@ -40,7 +40,7 @@ def zk_server(tmpdir):
     for child in children:
         if child == 'zookeeper':
             continue
-        zk.delete('/' + child, recursive=True)
+        zk.delete(f'/{child}', recursive=True)
 
     yield zk
 

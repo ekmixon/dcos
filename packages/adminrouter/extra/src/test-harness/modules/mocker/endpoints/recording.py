@@ -27,10 +27,12 @@ class RecordingHTTPRequestHandler(BaseHTTPRequestHandler):
         """Store all the relevant data of the request into the endpoint context."""
         ctx = self.server.context
 
-        res = {}
-        res['method'] = self.command
-        res['path'] = self.path
-        res['headers'] = self.headers.items()
+        res = {
+            'method': self.command,
+            'path': self.path,
+            'headers': self.headers.items(),
+        }
+
         res['request_version'] = self.request_version
         if self.headers.get('Content-Length') is not None:
             body_length = int(self.headers.get('Content-Length'))
@@ -109,7 +111,7 @@ class RecordingTcpIpEndpoint(TcpIpHttpEndpoint):
     def erase_recorded_requests(self, *_):
         """Fetch all the recorded requests data from the handler"""
         with self._context.lock:
-            self._context.data["requests"] = list()
+            self._context.data["requests"] = []
 
     def reset(self, *_):
         """Reset the endpoint to the default/initial state."""
@@ -121,5 +123,5 @@ class RecordingTcpIpEndpoint(TcpIpHttpEndpoint):
         """Helper function meant to initialize all the data relevant to this
            particular type of endpoint"""
         self._context.data["record_requests"] = False
-        self._context.data["requests"] = list()
+        self._context.data["requests"] = []
         self._context.data["encoded_response"] = None

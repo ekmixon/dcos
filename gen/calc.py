@@ -62,26 +62,33 @@ def validate_int_in_range(value, low, high):
     try:
         int_value = int(value)
     except ValueError as ex:
-        raise AssertionError('Must be an integer but got a {}: {}'.format(type_str(value), value)) from ex
+        raise AssertionError(
+            f'Must be an integer but got a {type_str(value)}: {value}'
+        ) from ex
+
 
     # Only a lower bound
     if high is None:
-        assert low <= int_value, 'Must be above or equal to {}'.format(low)
+        assert low <= int_value, f'Must be above or equal to {low}'
     else:
-        assert low <= int_value <= high, 'Must be between {} and {} inclusive'.format(low, high)
+        assert low <= int_value <= high, f'Must be between {low} and {high} inclusive'
 
 
 def validate_json_list(value):
     try:
         items = json.loads(value)
     except ValueError as ex:
-        raise AssertionError("Must be a JSON formatted list, but couldn't be parsed the given "
-                             "value `{}` as one because of: {}".format(value, ex)) from ex
-    assert isinstance(items, list), "Must be a JSON list. Got a {}".format(type_str(items))
+        raise AssertionError(
+            f"Must be a JSON formatted list, but couldn't be parsed the given value `{value}` as one because of: {ex}"
+        ) from ex
+
+    assert isinstance(items, list), f"Must be a JSON list. Got a {type_str(items)}"
 
     non_str = list(filter(lambda x: not isinstance(x, str), items))
-    assert not non_str, "Items in list must be strings, got invalid values: {}".format(
-        ", ".join("{} type {}".format(elem, type_str(elem)) for elem in non_str))
+    assert (
+        not non_str
+    ), f'Items in list must be strings, got invalid values: {", ".join(f"{elem} type {type_str(elem)}" for elem in non_str)}'
+
     return items
 
 
@@ -89,18 +96,15 @@ def valid_ipv4_address(ip):
     try:
         socket.inet_pton(socket.AF_INET, ip)
         return True
-    except OSError:
-        return False
-    except TypeError:
+    except (OSError, TypeError):
         return False
 
 
 def validate_ipv4_addresses(ips: list):
-    invalid_ips = []
-    for ip in ips:
-        if not valid_ipv4_address(ip):
-            invalid_ips.append(ip)
-    assert not invalid_ips, 'Invalid IPv4 addresses in list: {}'.format(', '.join(invalid_ips))
+    invalid_ips = [ip for ip in ips if not valid_ipv4_address(ip)]
+    assert (
+        not invalid_ips
+    ), f"Invalid IPv4 addresses in list: {', '.join(invalid_ips)}"
 
 
 def validate_absolute_path(path):
@@ -112,18 +116,15 @@ def valid_ipv6_address(ip6):
     try:
         socket.inet_pton(socket.AF_INET6, ip6)
         return True
-    except OSError:
-        return False
-    except TypeError:
+    except (OSError, TypeError):
         return False
 
 
 def validate_ipv6_addresses(ip6s: list):
-    invalid_ip6s = []
-    for ip6 in ip6s:
-        if not valid_ipv6_address(ip6):
-            invalid_ip6s.append(ip6)
-    assert not invalid_ip6s, 'Invalid IPv6 addresses in list: {}'.format(', '.join(invalid_ip6s))
+    invalid_ip6s = [ip6 for ip6 in ip6s if not valid_ipv6_address(ip6)]
+    assert (
+        not invalid_ip6s
+    ), f"Invalid IPv6 addresses in list: {', '.join(invalid_ip6s)}"
 
 
 def validate_ip_list(json_str: str):
@@ -151,7 +152,7 @@ def validate_ip_port_list(json_str: str):
 
 def calculate_environment_variable(name):
     value = os.getenv(name)
-    assert value is not None, "{} must be a set environment variable".format(name)
+    assert value is not None, f"{name} must be a set environment variable"
     return value
 
 
@@ -200,8 +201,9 @@ def validate_mesos_logrotate_file_size_mb(mesos_logrotate_file_size_mb):
     try:
         int(mesos_logrotate_file_size_mb)
     except ValueError as ex:
-        raise AssertionError("Error parsing 'mesos_logrotate_file_size_mb' "
-                             "parameter as an integer: {}".format(ex)) from ex
+        raise AssertionError(
+            f"Error parsing 'mesos_logrotate_file_size_mb' parameter as an integer: {ex}"
+        ) from ex
 
 
 def validate_mesos_container_log_sink(mesos_container_log_sink):
@@ -245,7 +247,10 @@ def calculate_mesos_log_directory_max_files(mesos_log_retention_mb):
 
 
 def calculate_ip_detect_contents(ip_detect_filename):
-    assert os.path.exists(ip_detect_filename), "ip-detect script `{}` must exist".format(ip_detect_filename)
+    assert os.path.exists(
+        ip_detect_filename
+    ), f"ip-detect script `{ip_detect_filename}` must exist"
+
     return yaml.dump(open(ip_detect_filename, encoding='utf-8').read())
 
 
@@ -272,17 +277,17 @@ def validate_json_dictionary(data):
     # TODO(cmaloney): Pull validate_json() out.
     try:
         loaded = json.loads(data)
-        assert isinstance(loaded, dict), "Must be a JSON dictionary. Got a {}".format(type_str(loaded))
+        assert isinstance(
+            loaded, dict
+        ), f"Must be a JSON dictionary. Got a {type_str(loaded)}"
+
         return loaded
     except ValueError as ex:
-        raise AssertionError("Must be valid JSON. Got: {}".format(data)) from ex
+        raise AssertionError(f"Must be valid JSON. Got: {data}") from ex
 
 
 def calculate_gen_resolvconf_search(dns_search):
-    if len(dns_search) > 0:
-        return "SEARCH=" + dns_search
-    else:
-        return ""
+    return f"SEARCH={dns_search}" if len(dns_search) > 0 else ""
 
 
 def calculate_mesos_hooks(dcos_remove_dockercfg_enable):
@@ -293,23 +298,23 @@ def calculate_mesos_hooks(dcos_remove_dockercfg_enable):
 
 
 def calculate_use_mesos_hooks(mesos_hooks):
-    if mesos_hooks == "":
-        return "false"
-    else:
-        return "true"
+    return "false" if mesos_hooks == "" else "true"
 
 
 def validate_network_default_name(overlay_network_default_name, dcos_overlay_network):
     try:
         overlay_network = json.loads(dcos_overlay_network)
     except ValueError as ex:
-        raise AssertionError("Provided input was not valid JSON: {}".format(dcos_overlay_network)) from ex
+        raise AssertionError(
+            f"Provided input was not valid JSON: {dcos_overlay_network}"
+        ) from ex
+
 
     overlay_names = map(lambda overlay: overlay['name'], overlay_network['overlays'])
 
-    assert overlay_network_default_name in overlay_names, (
-        "Default overlay network name does not reference a defined overlay network: {}".format(
-            overlay_network_default_name))
+    assert (
+        overlay_network_default_name in overlay_names
+    ), f"Default overlay network name does not reference a defined overlay network: {overlay_network_default_name}"
 
 
 class IPVersion(IntEnum):
@@ -324,8 +329,8 @@ def validate_config_subnet(config_name, subnet, version=IPVersion.IPv4):
                 (version == IPVersion.IPv6 and not isinstance(network, ipaddress.IPv6Network)):
             raise ValueError("IP version not match")
     except ValueError as ex:
-        err_msg = "Incorrect value for `{}`: `{}`. Only IPv{} subnets are allowed".format(
-            config_name, subnet, version)
+        err_msg = f"Incorrect value for `{config_name}`: `{subnet}`. Only IPv{version} subnets are allowed"
+
         raise AssertionError(err_msg) from ex
 
 
@@ -345,31 +350,38 @@ def validate_dcos_overlay_network(dcos_overlay_network):
     try:
         overlay_network = json.loads(dcos_overlay_network)
     except ValueError as ex:
-        raise AssertionError("Provided input was not valid JSON: {}".format(
-            dcos_overlay_network)) from ex
+        raise AssertionError(
+            f"Provided input was not valid JSON: {dcos_overlay_network}"
+        ) from ex
 
-    assert 'overlays' in overlay_network, (
-        'Missing "overlays" in overlay configuration {}'.format(
-            overlay_network))
 
-    assert len(overlay_network['overlays']) > 0, (
-        '"Overlays" network configuration is empty: {}'.format(overlay_network)
-    )
+    assert (
+        'overlays' in overlay_network
+    ), f'Missing "overlays" in overlay configuration {overlay_network}'
 
-    assert 'vtep_mac_oui' in overlay_network.keys(), (
-        'Missing "vtep_mac_oui" in overlay configuration {}'.format(
-            overlay_network))
+
+    assert (
+        len(overlay_network['overlays']) > 0
+    ), f'"Overlays" network configuration is empty: {overlay_network}'
+
+
+    assert (
+        'vtep_mac_oui' in overlay_network.keys()
+    ), f'Missing "vtep_mac_oui" in overlay configuration {overlay_network}'
+
 
     # Check the VTEP IP is present in the overlay configuration
-    assert 'vtep_subnet' in overlay_network, (
-        'Missing "vtep_subnet" in overlay configuration {}'.format(
-            overlay_network))
+    assert (
+        'vtep_subnet' in overlay_network
+    ), f'Missing "vtep_subnet" in overlay configuration {overlay_network}'
+
     validate_config_subnet('vtep_subnet', overlay_network['vtep_subnet'])
 
     # Check the VTEP IP6 is present in the overlay configuration
-    assert 'vtep_subnet6' in overlay_network, (
-        'Missing "vtep_subnet6" in overlay configuration {}'.format(
-            overlay_network))
+    assert (
+        'vtep_subnet6' in overlay_network
+    ), f'Missing "vtep_subnet6" in overlay configuration {overlay_network}'
+
     validate_config_subnet("vtep_subnet6", overlay_network['vtep_subnet6'],
                            IPVersion.IPv6)
 
@@ -377,16 +389,17 @@ def validate_dcos_overlay_network(dcos_overlay_network):
     validate_int_in_range(vtep_mtu, 552, None)
 
     for overlay in overlay_network['overlays']:
-        assert 'name' in overlay, (
-            'Missing "name" in overlay configuration: {}'.format(overlay))
+        assert 'name' in overlay, f'Missing "name" in overlay configuration: {overlay}'
 
-        assert (len(overlay['name']) <=
-                13), ("Overlay name cannot exceed 13 characters: {}".format(
-                    overlay['name']))
+        assert (
+            len(overlay['name']) <= 13
+        ), f"Overlay name cannot exceed 13 characters: {overlay['name']}"
 
-        assert ('subnet' in overlay or 'subnet6' in overlay), (
-            'Missing "subnet" or "subnet6" in overlay configuration: {}'.format(
-                overlay))
+
+        assert (
+            'subnet' in overlay or 'subnet6' in overlay
+        ), f'Missing "subnet" or "subnet6" in overlay configuration: {overlay}'
+
 
         if 'subnet' in overlay:
             validate_config_subnet('overlay subnet', overlay['subnet'])
@@ -413,8 +426,10 @@ def validate_overlay_networks_not_overlap(dcos_overlay_network,
     try:
         overlay_network = json.loads(dcos_overlay_network)
     except ValueError as ex:
-        raise AssertionError("Provided input was not valid JSON: {}".format(
-            dcos_overlay_network)) from ex
+        raise AssertionError(
+            f"Provided input was not valid JSON: {dcos_overlay_network}"
+        ) from ex
+
     _calico_network_cidr = ipaddress.ip_network(calico_network_cidr)
     overlay_subnets = [
         ipaddress.ip_network(overlay["subnet"])
@@ -423,9 +438,9 @@ def validate_overlay_networks_not_overlap(dcos_overlay_network,
     for overlay_subnet in overlay_subnets:
         if not isinstance(overlay_subnet, ipaddress.IPv4Network):
             continue
-        assert not overlay_subnet.overlaps(_calico_network_cidr), \
-            "overlay subnet {} overlaps calico network {}".format(
-                overlay_subnet, calico_network_cidr)
+        assert not overlay_subnet.overlaps(
+            _calico_network_cidr
+        ), f"overlay subnet {overlay_subnet} overlaps calico network {calico_network_cidr}"
 
 
 def calculate_dcos_overlay_network_json(dcos_overlay_network, enable_ipv6):
@@ -440,7 +455,13 @@ def calculate_dcos_overlay_network_json(dcos_overlay_network, enable_ipv6):
 
 
 def validate_num_masters(num_masters):
-    assert int(num_masters) in [1, 3, 5, 7, 9], "Must have 1, 3, 5, 7, or 9 masters. Found {}".format(num_masters)
+    assert int(num_masters) in {
+        1,
+        3,
+        5,
+        7,
+        9,
+    }, f"Must have 1, 3, 5, 7, or 9 masters. Found {num_masters}"
 
 
 def validate_bootstrap_url(bootstrap_url):
@@ -493,11 +514,13 @@ def validate_resolvers(resolvers):
     resolvers_list = validate_json_list(resolvers)
     check_duplicates(resolvers_list)
 
-    resolvers_set = set(r.split(':')[0] for r in resolvers_list)
+    resolvers_set = {r.split(':')[0] for r in resolvers_list}
     spartan_resolvers = ('198.51.100.1', '198.51.100.2', '198.51.100.3')
     intersection = resolvers_set & set(spartan_resolvers)
-    assert not intersection, 'Spartan addresses found in `resolvers`: {}'.format(
-        ', '.join(r for r in spartan_resolvers if r in intersection))
+    assert (
+        not intersection
+    ), f"Spartan addresses found in `resolvers`: {', '.join((r for r in spartan_resolvers if r in intersection))}"
+
 
     return validate_ip_port_list(resolvers)
 
@@ -531,9 +554,7 @@ def calculate_exhibitor_static_ensemble(master_list):
 
 
 def calculate_exhibitor_admin_password_enabled(exhibitor_admin_password):
-    if exhibitor_admin_password:
-        return 'true'
-    return 'false'
+    return 'true' if exhibitor_admin_password else 'false'
 
 
 def calculate_adminrouter_auth_enabled(oauth_enabled):
@@ -613,10 +634,7 @@ def validate_dcos_l4lb_enable_ipv6(dcos_l4lb_enable_ipv6, enable_ipv6):
 
 
 def calculate_docker_credentials_dcos_owned(cluster_docker_credentials):
-    if cluster_docker_credentials == "{}":
-        return "false"
-    else:
-        return "true"
+    return "false" if cluster_docker_credentials == "{}" else "true"
 
 
 def calculate_cluster_docker_credentials_path(cluster_docker_credentials_dcos_owned):
@@ -635,10 +653,7 @@ def calculate_profile_symlink_target_dir(profile_symlink_target):
 
 
 def calculate_set(parameter):
-    if parameter == '':
-        return 'false'
-    else:
-        return 'true'
+    return 'false' if parameter == '' else 'true'
 
 
 def validate_exhibitor_storage_master_discovery(master_discovery, exhibitor_storage_backend):
@@ -654,15 +669,16 @@ def validate_adminrouter_grpc_proxy_port(adminrouter_grpc_proxy_port):
     try:
         assert 0 < int(adminrouter_grpc_proxy_port) < 65536
     except ValueError as ex:
-        raise AssertionError("Error parsing 'adminrouter_grpc_proxy_port' "
-                             "parameter as an integer: {}".format(ex)) from ex
+        raise AssertionError(
+            f"Error parsing 'adminrouter_grpc_proxy_port' parameter as an integer: {ex}"
+        ) from ex
 
 
 def calculate_adminrouter_tls_version_override(
         adminrouter_tls_1_0_enabled,
         adminrouter_tls_1_1_enabled,
         adminrouter_tls_1_2_enabled):
-    tls_versions = list()
+    tls_versions = []
     if adminrouter_tls_1_0_enabled == 'true':
         tls_versions.append('TLSv1')
 
@@ -672,15 +688,11 @@ def calculate_adminrouter_tls_version_override(
     if adminrouter_tls_1_2_enabled == 'true':
         tls_versions.append('TLSv1.2')
 
-    tls_version_string = " ".join(tls_versions)
-    return tls_version_string
+    return " ".join(tls_versions)
 
 
 def calculate_adminrouter_tls_cipher_override(adminrouter_tls_cipher_suite):
-    if adminrouter_tls_cipher_suite != '':
-        return 'true'
-    else:
-        return 'false'
+    return 'true' if adminrouter_tls_cipher_suite != '' else 'false'
 
 
 def validate_adminrouter_tls_version_present(
@@ -694,15 +706,12 @@ def validate_adminrouter_tls_version_present(
         adminrouter_tls_1_2_enabled,
     ]
 
-    enabled_tls_flags_count = len(
-        [flag for flag in tls_version_flags if flag == 'true'])
-
     msg = (
         'At least one of adminrouter_tls_1_0_enabled, '
         'adminrouter_tls_1_1_enabled and adminrouter_tls_1_2_enabled must be '
         "set to 'true'."
     )
-    assert enabled_tls_flags_count > 0, msg
+    assert [flag for flag in tls_version_flags if flag == 'true'], msg
 
 
 def validate_adminrouter_x_frame_options(adminrouter_x_frame_options):
@@ -764,39 +773,42 @@ def validate_dns_forward_zones(dns_forward_zones):
 
 
 def calculate_fair_sharing_excluded_resource_names(gpus_are_scarce):
-    if gpus_are_scarce == 'true':
-        return 'gpus'
-    return ''
+    return 'gpus' if gpus_are_scarce == 'true' else ''
 
 
 def validate_mesos_max_completed_frameworks(mesos_max_completed_frameworks):
     try:
         int(mesos_max_completed_frameworks)
     except ValueError as ex:
-        raise AssertionError("Error parsing 'mesos_max_completed_frameworks' "
-                             "parameter as an integer: {}".format(ex)) from ex
+        raise AssertionError(
+            f"Error parsing 'mesos_max_completed_frameworks' parameter as an integer: {ex}"
+        ) from ex
 
 
 def validate_mesos_max_completed_tasks_per_framework(mesos_max_completed_tasks_per_framework):
     try:
         int(mesos_max_completed_tasks_per_framework)
     except ValueError as ex:
-        raise AssertionError("Error parsing 'mesos_max_completed_tasks_per_framework' "
-                             "parameter as an integer: {}".format(ex)) from ex
+        raise AssertionError(
+            f"Error parsing 'mesos_max_completed_tasks_per_framework' parameter as an integer: {ex}"
+        ) from ex
 
 
 def validate_mesos_recovery_timeout(mesos_recovery_timeout):
     units = ['ns', 'us', 'ms', 'secs', 'mins', 'hrs', 'days', 'weeks']
 
     match = re.match(r"([\d\.]+)(\w+)", mesos_recovery_timeout)
-    assert match is not None, "Error parsing 'mesos_recovery_timeout' value: {}.".format(mesos_recovery_timeout)
+    assert (
+        match is not None
+    ), f"Error parsing 'mesos_recovery_timeout' value: {mesos_recovery_timeout}."
 
-    value = match.group(1)
-    unit = match.group(2)
+
+    value = match[1]
+    unit = match[2]
 
     assert value.count('.') <= 1, "Invalid decimal format."
-    assert float(value) <= 2**64, "Value {} not in supported range.".format(value)
-    assert unit in units, "Unit '{}' not in {}.".format(unit, units)
+    assert float(value) <= 2**64, f"Value {value} not in supported range."
+    assert unit in units, f"Unit '{unit}' not in {units}."
 
 
 def validate_mesos_default_container_shm_size(
@@ -805,14 +817,16 @@ def validate_mesos_default_container_shm_size(
         units = ['B', 'KB', 'MB', 'GB', 'TB']
 
         match = re.match(r"([\d\.]+)(\w+)", mesos_default_container_shm_size)
-        assert match is not None, "Error parsing 'mesos_default_container_shm_size' value: {}.".format(
-            mesos_default_container_shm_size)
+        assert (
+            match is not None
+        ), f"Error parsing 'mesos_default_container_shm_size' value: {mesos_default_container_shm_size}."
 
-        value = match.group(1)
-        unit = match.group(2).upper()
 
-        assert value.count('.') == 0, "Fractional bytes: {}.".format(value)
-        assert unit in units, "Unit '{}' not in {}.".format(unit, units)
+        value = match[1]
+        unit = match[2].upper()
+
+        assert value.count('.') == 0, f"Fractional bytes: {value}."
+        assert unit in units, f"Unit '{unit}' not in {units}."
 
 
 def calculate_check_config_contents(check_config, custom_checks, check_search_path, check_ld_library_path):
@@ -1044,6 +1058,7 @@ def calculate_check_config(check_time):
 
 def validate_check_config(check_config):
 
+
     class PrettyReprAnd(schema.And):
 
         def __repr__(self):
@@ -1052,14 +1067,17 @@ def validate_check_config(check_config):
     check_name = PrettyReprAnd(
         str,
         lambda val: len(val) > 0,
-        lambda val: not any(w in val for w in string.whitespace),
-        error='Check name must be a nonzero length string with no whitespace')
+        lambda val: all(w not in val for w in string.whitespace),
+        error='Check name must be a nonzero length string with no whitespace',
+    )
+
 
     timeout_units = ['ns', 'us', 'µs', 'ms', 's', 'm', 'h']
     timeout = schema.Regex(
-        r'^\d+(\.\d+)?({})$'.format('|'.join(timeout_units)),
-        error='Timeout must be a string containing an integer or float followed by a unit: {}'.format(
-            ', '.join(timeout_units)))
+        f"^\d+(\.\d+)?({'|'.join(timeout_units)})$",
+        error=f"Timeout must be a string containing an integer or float followed by a unit: {', '.join(timeout_units)}",
+    )
+
 
     check_config_schema = schema.Schema({
         schema.Optional('cluster_checks'): {

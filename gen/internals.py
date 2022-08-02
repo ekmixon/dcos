@@ -18,11 +18,11 @@ def get_function_parameters(function):
 
 
 def validate_arguments_strings(arguments: dict):
-    errors = dict()
+    errors = {}
     # Validate that all keys and values of arguments are strings
     for k, v in arguments.items():
         if not isinstance(k, str):
-            errors[''] = "All keys in arguments must be strings. '{}' isn't.".format(k)
+            errors[''] = f"All keys in arguments must be strings. '{k}' isn't."
         if not isinstance(v, str):
             errors[k] = ("All values in arguments must be strings. Value for argument {} isn't. " +
                          "Given value: {}").format(k, v)
@@ -38,8 +38,8 @@ def validate_one_of(val: str, valid_values) -> None:
     of all items in `valid_values`.
     """
     if val not in valid_values:
-        options_string = ', '.join("'{}'".format(v) for v in valid_values)
-        raise AssertionError("Must be one of {}. Got '{}'.".format(options_string, val))
+        options_string = ', '.join(f"'{v}'" for v in valid_values)
+        raise AssertionError(f"Must be one of {options_string}. Got '{val}'.")
 
 
 def function_id(function: Callable):
@@ -112,12 +112,7 @@ class Setter:
             self.is_late = False
 
     def __repr__(self):
-        return "<Setter {}{}{}, conditions: {}{}>".format(
-            self.name,
-            ", optional" if self.is_optional else "",
-            ", user" if self.is_user else "",
-            self.conditions,
-            ", parameters {}".format(self.parameters))
+        return f'<Setter {self.name}{", optional" if self.is_optional else ""}{", user" if self.is_user else ""}, conditions: {self.conditions}, parameters {self.parameters}>'
 
     def make_id(self):
         return {
@@ -138,7 +133,7 @@ class Scope:
     def __init__(self, name: str, cases: Dict[str, Any]=None):
         # Note: use type Any and type check later to avoid circular dependency
         self.name = name
-        self.cases = cases if cases is not None else dict()
+        self.cases = cases if cases is not None else {}
         for v in self.cases.values():
             assert isinstance(v, Target)
 
@@ -149,15 +144,21 @@ class Scope:
 
     def __iadd__(self, other):
         # Note: can't use type being defined as parameter type
-        assert isinstance(other, Scope), "Internal consistency error, expected Scope but got {}".format(type(other))
+        assert isinstance(
+            other, Scope
+        ), f"Internal consistency error, expected Scope but got {type(other)}"
+
 
         # Must have the same name and same options in order to be merged (can't have a new
         # switch add new, unhandled cases to a switch already included / represented by this scope).
-        assert self.name == other.name, "Internal consistency error: Trying to merge scopes with " \
-            "different names: {} and {}".format(self.name, other.name)
-        assert self.cases.keys() == other.cases.keys(), "Same name / switch variable introduced " \
-            "with a different set of possible cases. name: {}. First options: {}, Second " \
-            "options: {}".format(self.name, self.cases.keys(), other.cases.keys())
+        assert (
+            self.name == other.name
+        ), f"Internal consistency error: Trying to merge scopes with different names: {self.name} and {other.name}"
+
+        assert (
+            self.cases.keys() == other.cases.keys()
+        ), f"Same name / switch variable introduced with a different set of possible cases. name: {self.name}. First options: {self.cases.keys()}, Second options: {other.cases.keys()}"
+
 
         # Merge the targets for the cases
         for name in self.cases:
@@ -171,7 +172,7 @@ class Scope:
         return self.name == other.name and self.cases == other.cases
 
     def __repr__(self):
-        return "<Scope cases: {}>".format(self.cases.items())
+        return f"<Scope cases: {self.cases.items()}>"
 
 
 class Target:
@@ -186,7 +187,7 @@ class Target:
         sub_scopes: mapping of variables to be conditionally added
         """
         self.variables = variables if variables is not None else set()
-        self.sub_scopes = sub_scopes if sub_scopes is not None else dict()
+        self.sub_scopes = sub_scopes if sub_scopes is not None else {}
         self._arguments = None
 
     def add_variable(self, variable: str):
@@ -224,7 +225,10 @@ class Target:
 
     def __iadd__(self, other):
         # Note: can't use type being defined as parameter type
-        assert isinstance(other, Target), "Internal consistency error, expected Target but got {}".format(type(other))
+        assert isinstance(
+            other, Target
+        ), f"Internal consistency error, expected Target but got {type(other)}"
+
         self.variables |= other.variables
 
         # Add all scopes from the other to this, merging all common sub scopes.
@@ -237,7 +241,7 @@ class Target:
         return self
 
     def __repr__(self):
-        return "<Target variables: {}, sub_scopes: {}>".format(self.variables, self.sub_scopes.items())
+        return f"<Target variables: {self.variables}, sub_scopes: {self.sub_scopes.items()}>"
 
     def __eq__(self, other):
         # Note: can't use type being defined as parameter type
@@ -259,15 +263,15 @@ class Source:
         validate_my_arg_fn: a function that will be called against the argument names it uses
         add_entry_*: additional entries like the object above
         """
-        self.setters = dict()
-        self.validate = list()
-        self.secret = list()
+        self.setters = {}
+        self.validate = []
+        self.secret = []
         self.is_user = is_user
         if entry:
             self.add_entry(entry, False)
 
     def add_setter(self, name, value, is_optional, conditions):
-        self.setters.setdefault(name, list()).append(
+        self.setters.setdefault(name, []).append(
             Setter(name, value, is_optional, conditions, self.is_user)
         )
 
@@ -276,12 +280,12 @@ class Source:
         # that one takes functions and one takes strings. Simplify to just 'can', 'must'.
         assert scope.keys() <= {'validate', 'default', 'must', 'secret', 'conditional'}
 
-        self.validate += scope.get('validate', list())
-        self.secret += scope.get('secret', list())
+        self.validate += scope.get('validate', [])
+        self.secret += scope.get('secret', [])
 
-        must = scope.get('must', dict())
-        default = scope.get('default', dict())
-        conditional = scope.get('conditional', dict())
+        must = scope.get('must', {})
+        default = scope.get('default', {})
+        conditional = scope.get('conditional', {})
 
         for name, fn in must.items():
             self.add_setter(name, fn, False, conditions)
@@ -297,9 +301,10 @@ class Source:
                     setter_params.add(param)
         all_variables = set(self.setters.keys()).union(setter_params)
         for name in self.secret:
-            assert name in all_variables, (
-                "Secret variable '{}' must be defined or referenced as a parameter in this scope".format(name)
-            )
+            assert (
+                name in all_variables
+            ), f"Secret variable '{name}' must be defined or referenced as a parameter in this scope"
+
 
         for name, cond_options in conditional.items():
             for value, sub_scope in cond_options.items():
@@ -313,13 +318,13 @@ class Source:
                 del self.setters[name]
 
         # Remove setters and secrets from self that are defined by scope.
-        for name in scope.get('must', dict()).keys():
+        for name in scope.get('must', {}).keys():
             del_setter(name)
-        for name in scope.get('default', dict()).keys():
+        for name in scope.get('default', {}).keys():
             del_setter(name)
-        self.secret = list(set(self.secret) - set(scope.get('secret', list())))
+        self.secret = list(set(self.secret) - set(scope.get('secret', [])))
 
-        for name, cond_options in scope.get('conditional', dict()).items():
+        for name, cond_options in scope.get('conditional', {}).items():
             if name in self.setters:
                 raise NotImplementedError("Should conditional setters overwrite all setters?")
 
@@ -332,10 +337,9 @@ class Source:
     def make_id(self):
         # {key: [hash_checkout(setter.make_id() for setter in setters)]
         #                 for key, setters in self.setters.items()}
-        setter_ids = list()
+        setter_ids = []
         for setter_list in self.setters.values():
-            for setter in setter_list:
-                setter_ids.append(hash_checkout(setter.make_id()))
+            setter_ids.extend(hash_checkout(setter.make_id()) for setter in setter_list)
         return {
             'setters': setter_ids,
             'validate': [hash_checkout(function_id(fn)) for fn in self.validate],
@@ -348,7 +352,7 @@ class CalculatorError(Exception):
 
     def __init__(self, message: str, chain: list = None):
         if chain is None:
-            chain = list()
+            chain = []
         self.message = message
         self.chain = chain
         super().__init__(message)
@@ -425,14 +429,15 @@ class Resolvable:
 
     @property
     def value(self):
-        assert self.is_resolved or self.is_late, "is_resolved() or is_late() must return true for " \
-            "this function to be called. State: {}, is_resolved: {}, is_late: {}".format(
-                self._state, self.is_resolved, self.is_late)
+        assert (
+            self.is_resolved or self.is_late
+        ), f"is_resolved() or is_late() must return true for this function to be called. State: {self._state}, is_resolved: {self.is_resolved}, is_late: {self.is_late}"
+
 
         return self._value
 
     def __str__(self):
-        return "<Resolvable name: {}, state: {}>".format(self.name, self._state)
+        return f"<Resolvable name: {self.name}, state: {self._state}>"
 
 
 class ArgumentDict(dict):
@@ -466,8 +471,8 @@ class Validator:
 
         # Re-arrange the validation functions so we can more easily access them by
         # argument name.
-        self._validate_by_arg = dict()
-        self._multi_arg_validate = dict()
+        self._validate_by_arg = {}
+        self._multi_arg_validate = {}
 
         for function in validate_functions:
             parameters = get_function_parameters(function)
@@ -475,13 +480,13 @@ class Validator:
             # thing but the timing / handling of when and how we run single vs. multi-parameter
             # validation functions is fairly different, the extra bit here simplifies the later code.
             if len(parameters) == 1:
-                self._validate_by_arg.setdefault(parameters.pop(), list()).append(function)
+                self._validate_by_arg.setdefault(parameters.pop(), []).append(function)
             else:
-                self._multi_arg_validate.setdefault(frozenset(parameters), list()).append(function)
+                self._multi_arg_validate.setdefault(frozenset(parameters), []).append(function)
 
         for target in targets:
             for parameter, function in target.yield_validates():
-                self._validate_by_arg.setdefault(parameter, list()).append(function)
+                self._validate_by_arg.setdefault(parameter, []).append(function)
 
     def validate_single(self, name: str, value: str):
         """Calls all validate functions which validate the given parameter name
@@ -503,7 +508,7 @@ class Validator:
         for parameter_set, validate_fns in self._multi_arg_validate.items():
             # Build up argument map for validate function. If any arguments are
             # unset then skip this validate function.
-            kwargs = dict()
+            kwargs = {}
             skip = False
             for parameter in parameter_set:
                 # Exit early if the parameter was never calculated / asked for (We don't
@@ -542,17 +547,17 @@ class Resolver:
         self._setters = setters
         self._targets = targets
 
-        self._errors = dict()
+        self._errors = {}
         self._unset = set()
         self._late = set()
 
         # The current stack of resolvables which are in the process of being resolved.
-        self._eval_stack = list()
+        self._eval_stack = []
 
         # Set of Resolvables() which are resolved, being resolved.
         self._arguments = ArgumentDict()
 
-        self._contexts = list()
+        self._contexts = []
 
         self._validator = Validator(validate_fns, targets)
 
@@ -571,9 +576,12 @@ class Resolver:
             return True
 
         # Find the right setter to calculate the argument.
-        feasible = list(filter(all_conditions_met, self._setters.get(resolvable.name, list())))
+        feasible = list(
+            filter(all_conditions_met, self._setters.get(resolvable.name, []))
+        )
 
-        if len(feasible) == 0:
+
+        if not feasible:
             self._unset.add(resolvable.name)
             raise SkipError("no way to calculate. Must be set in configuration.")
 
@@ -644,9 +652,15 @@ class Resolver:
         # it (including itself) get put into an error state / marked appropriately.
         if name in self._eval_stack:
             raise CalculatorError(
-                "Internal error: config calculation cycle detected. Name shouldn't repeat in the "
-                "eval stack. name: {} eval_stack: {}".format(
-                    name, self._eval_stack), [(name, copy.copy(self._eval_stack),)])
+                f"Internal error: config calculation cycle detected. Name shouldn't repeat in the eval stack. name: {name} eval_stack: {self._eval_stack}",
+                [
+                    (
+                        name,
+                        copy.copy(self._eval_stack),
+                    )
+                ],
+            )
+
         self._eval_stack.append(name)
         yield
         foo = self._eval_stack.pop()
@@ -673,7 +687,7 @@ class Resolver:
             except SkipError as ex:
                 resolvable.finalize_error(ex)
             except Exception as ex:
-                msg = "Unexpected exception: {}".format(ex)
+                msg = f"Unexpected exception: {ex}"
                 resolvable.finalize_error(CalculatorError(msg, [ex]))
                 self._errors[resolvable.name] = msg
                 raise
@@ -693,21 +707,25 @@ class Resolver:
             raise
         finally:
             # The resolvable must have either
-            assert resolvable.is_finalized, "_ensure_finalized is supposed to always finalize a " \
-                "resolvable but didn't: {}".format(resolvable)
+            assert (
+                resolvable.is_finalized
+            ), f"_ensure_finalized is supposed to always finalize a resolvable but didn't: {resolvable}"
+
 
         # If the resolvable is in an error state, raise it so that all the resolvables
         # depending on it will be put into an error state.
         if resolvable.is_error:
             # TODO(cmaloney): Should re-raise the original error with it's original context.
             raise SkipError(
-                "Value depended upon {} has an error: {}".format(resolvable.name, resolvable.error),
-                [(name, copy.copy(self._eval_stack))])
+                f"Value depended upon {resolvable.name} has an error: {resolvable.error}",
+                [(name, copy.copy(self._eval_stack))],
+            )
+
 
         return resolvable.value
 
     def _calculate_target(self, target):
-        finalized_arguments = dict()
+        finalized_arguments = {}
 
         # TODO(cmaloney): All the arguments depended upon by the arguments resolved here should be
         # included in the target's full set of finalized arguments.
@@ -718,17 +736,20 @@ class Resolver:
             self._ensure_finalized(self._arguments[name])
             resolvable = self._arguments[name]
 
-            assert resolvable.is_finalized, " _resolve_name should have resulted in finalization " \
-                "of {}".format(resolvable)
+            assert (
+                resolvable.is_finalized
+            ), f" _resolve_name should have resulted in finalization of {resolvable}"
+
 
             # Tried solving for the condition but couldn't, so we can't check
             # the sub-scope because we don't know which one to check.
             if resolvable.is_error:
                 continue
 
-            assert resolvable.is_resolved or resolvable.is_late, (
-                "Finalized variable not resolved or late: {}".format(resolvable)
-            )
+            assert (
+                resolvable.is_resolved or resolvable.is_late
+            ), f"Finalized variable not resolved or late: {resolvable}"
+
 
             # Must be in the cases since we add validation functions for all switches automatically.
             assert resolvable.value in sub_scope.cases
@@ -739,7 +760,7 @@ class Resolver:
 
             # This .update() is safe because Resolver guarantees each argument
             # only ever has one value / resolvable.
-            finalized_arguments.update(sub_target.arguments)
+            finalized_arguments |= sub_target.arguments
 
         target.finalize(finalized_arguments)
 
@@ -776,8 +797,8 @@ class Resolver:
         # messages which is why single-key messages we never overwrite.
         # TODO(cmaloney): Teach the whole stack to be able to handle multi-key
         # validation errors.
-        messages = dict()
-        to_do = dict()
+        messages = {}
+        to_do = {}
 
         for key, msg in self._errors.items():
             if isinstance(key, frozenset):
@@ -806,8 +827,8 @@ def resolve_configuration(sources: List[Source], targets: List[Target]):
 
     # Merge the sources into a big dictionary of setters + validators, ensuring
     # that all setters are either strings or functions.
-    validate = list()
-    setters = dict()
+    validate = []
+    setters = {}
 
     # Merge all the config targets into one big group of setters for providing
     # to the calculator
@@ -815,7 +836,7 @@ def resolve_configuration(sources: List[Source], targets: List[Target]):
     # could probably be joined.
     for source in sources:
         for name, setter_list in source.setters.items():
-            setters.setdefault(name, list())
+            setters.setdefault(name, [])
             setters[name] += setter_list
         validate += source.validate
 
@@ -832,7 +853,7 @@ def resolve_configuration(sources: List[Source], targets: List[Target]):
     for source in sources:
         for name, setter_list in source.setters.items():
             # TODO(cmaloney): Make a setter manager already...
-            setters.setdefault(name, list())
+            setters.setdefault(name, [])
             setters[name] += setter_list
         validate += source.validate
 
@@ -841,11 +862,12 @@ def resolve_configuration(sources: List[Source], targets: List[Target]):
     resolver.resolve()
 
     def target_finalized(target):
-        return all([arg.is_finalized for arg in target.arguments.values()])
+        return all(arg.is_finalized for arg in target.arguments.values())
+
     assert all(map(target_finalized, targets)), "All targets arguments should have been finalized to values"
 
     # Validate all new / calculated arguments are strings.
-    arg_dict = dict()
+    arg_dict = {}
     for resolvable in resolver.arguments.values():
         if resolvable.is_error:
             continue

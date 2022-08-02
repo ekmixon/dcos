@@ -11,7 +11,7 @@ ZK_TRANSACTIONS = os.path.join(ZK_VAR_DIR, 'transactions')
 
 def get_var_assert_set(name):
     if name not in os.environ:
-        print('ERROR: "{}" must be set'.format(name))
+        print(f'ERROR: "{name}" must be set')
         sys.exit(1)
 
     return os.environ[name]
@@ -29,14 +29,13 @@ def invoke_detect_ip():
         ip = check_output(
             ['/opt/mesosphere/bin/detect_ip']).strip().decode('utf-8')
     except CalledProcessError as e:
-        print("check_output exited with {}".format(e))
+        print(f"check_output exited with {e}")
         sys.exit(1)
     try:
         socket.inet_aton(ip)
         return ip
     except socket.error as e:
-        print(
-            "inet_aton exited with {}. {} is not a valid IPv4 address".format(e, ip))
+        print(f"inet_aton exited with {e}. {ip} is not a valid IPv4 address")
         sys.exit(1)
 
 
@@ -66,12 +65,17 @@ exhibitor_cmdline = [
     '-Djava.util.prefs.userRoot=/var/lib/dcos/exhibitor/',
     '-Duser.home=/var/lib/dcos/exhibitor/',
     '-Duser.dir=/var/lib/dcos/exhibitor/',
-    '-Djna.tmpdir=%s' % jna_tmpdir,
-    '-jar', '$PKG_PATH/usr/exhibitor/exhibitor.jar',
-    '--port', '8181',
-    '--defaultconfig', '/run/dcos_exhibitor/exhibitor_defaults.conf',
-    '--hostname', detected_ip
+    f'-Djna.tmpdir={jna_tmpdir}',
+    '-jar',
+    '$PKG_PATH/usr/exhibitor/exhibitor.jar',
+    '--port',
+    '8181',
+    '--defaultconfig',
+    '/run/dcos_exhibitor/exhibitor_defaults.conf',
+    '--hostname',
+    detected_ip,
 ]
+
 
 # Optionally pick up web server security configuration.
 if os.path.exists('/opt/mesosphere/etc/exhibitor_web.xml') and \
@@ -84,10 +88,7 @@ if os.path.exists('/opt/mesosphere/etc/exhibitor_web.xml') and \
 
 zookeeper_cluster_size = int(open('/opt/mesosphere/etc/master_count').read().strip())
 
-check_ms = 30000
-if zookeeper_cluster_size == 1:
-    check_ms = 2000
-
+check_ms = 2000 if zookeeper_cluster_size == 1 else 30000
 # Write out base exhibitor configuration
 write_str('/run/dcos_exhibitor/exhibitor_defaults.conf', """
 # These Exhibitor properties are used to first initialize the config stored in
@@ -163,16 +164,21 @@ elif zookeeper_cluster_size == 1:
     # https://jira.mesosphere.com/browse/DCOS-6147
     exhibitor_cmdline += [
         '--configtype=static',
-        '--staticensemble=1:' + detected_ip
+        f'--staticensemble=1:{detected_ip}',
     ]
+
 elif exhibitor_backend == 'AWS_S3':
     print("Exhibitor configured for AWS S3")
     exhibitor_cmdline += [
         '--configtype=s3',
-        '--s3config', '{}:{}'.format(get_var_assert_set("AWS_S3_BUCKET"), get_var_assert_set("AWS_S3_PREFIX")),
-        '--s3region', get_var_assert_set("AWS_REGION"),
-        '--s3backup', 'false',
+        '--s3config',
+        f'{get_var_assert_set("AWS_S3_BUCKET")}:{get_var_assert_set("AWS_S3_PREFIX")}',
+        '--s3region',
+        get_var_assert_set("AWS_REGION"),
+        '--s3backup',
+        'false',
     ]
+
 
     # If there are explicit s3 credentials, add an --s3credentials flag
     if os.path.exists('/opt/mesosphere/etc/exhibitor.properties'):
@@ -181,22 +187,27 @@ elif exhibitor_backend == 'AZURE':
     print("Exhibitor configured for Azure")
     exhibitor_cmdline += [
         '--configtype=azure',
-        '--azureconfig', '{}:{}'.format(get_var_assert_set('AZURE_CONTAINER'), get_var_assert_set('AZURE_PREFIX')),
-        '--azurecredentials', '/opt/mesosphere/etc/exhibitor.properties',
+        '--azureconfig',
+        f"{get_var_assert_set('AZURE_CONTAINER')}:{get_var_assert_set('AZURE_PREFIX')}",
+        '--azurecredentials',
+        '/opt/mesosphere/etc/exhibitor.properties',
     ]
+
 elif exhibitor_backend == 'GCE':
     print("Exhibitor configured for GCE")
     exhibitor_cmdline += [
         '--configtype=gcs',
-        '--gcsconfig={}:{}'.format(get_var_assert_set('GCS_BUCKET_NAME'), get_var_assert_set('GCS_OBJECT_NAME'))
+        f"--gcsconfig={get_var_assert_set('GCS_BUCKET_NAME')}:{get_var_assert_set('GCS_OBJECT_NAME')}",
     ]
+
 elif exhibitor_backend == 'ZK':
     print("Exhibitor configured for Zookeeper")
     exhibitor_cmdline += [
         '--configtype=zookeeper',
-        '--zkconfigconnect={}'.format(get_var_assert_set('ZK_CONFIG_CONNECT')),
-        '--zkconfigzpath={}'.format(get_var_assert_set('ZK_CONFIG_ZPATH'))
+        f"--zkconfigconnect={get_var_assert_set('ZK_CONFIG_CONNECT')}",
+        f"--zkconfigzpath={get_var_assert_set('ZK_CONFIG_ZPATH')}",
     ]
+
 elif exhibitor_backend == 'SHARED_FS':
     print("Exhibitor configured for shared filesystem")
     exhibitor_cmdline += [

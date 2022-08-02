@@ -69,7 +69,7 @@ def test_if_zookeeper_cluster_is_up(dcos_api_session: DcosApiSession) -> None:
     assert r.status_code == 200
 
     data = r.json()
-    serving_zks = sum(1 for x in data if x['code'] == 3)
+    serving_zks = sum(x['code'] == 3 for x in data)
     zks_ips = sorted(x['hostname'] for x in data)
     zks_leaders = sum(1 for x in data if x['isLeader'])
 
@@ -150,7 +150,7 @@ def test_if_we_have_capabilities(dcos_api_session: DcosApiSession) -> None:
 
 def test_if_overlay_master_is_up(dcos_api_session: DcosApiSession) -> None:
     r = dcos_api_session.get('/mesos/overlay-master/state')
-    assert r.ok, "status_code: {}, content: {}".format(r.status_code, r.content)
+    assert r.ok, f"status_code: {r.status_code}, content: {r.content}"
 
     # Make sure the `dcos` and `dcos6` overlays have been configured.
     json = r.json()
@@ -175,14 +175,18 @@ def test_if_overlay_master_is_up(dcos_api_session: DcosApiSession) -> None:
 
 def test_if_overlay_master_agent_is_up(dcos_api_session: DcosApiSession) -> None:
     master_response = dcos_api_session.get('/mesos/overlay-master/state')
-    assert master_response.ok,\
-        "status_code: {}, content: {}".format(master_response.status_code, master_response.content)
+    assert (
+        master_response.ok
+    ), f"status_code: {master_response.status_code}, content: {master_response.content}"
+
 
     master_overlay_json = master_response.json()
 
     agent_response = dcos_api_session.get('/mesos/overlay-agent/overlay')
-    assert agent_response.ok,\
-        "status_code: {}, content: {}".format(agent_response.status_code, agent_response.content)
+    assert (
+        agent_response.ok
+    ), f"status_code: {agent_response.status_code}, content: {agent_response.content}"
+
 
     # Make sure the `dcos` and `dcos6` overlays have been configured.
     agent_overlay_json = agent_response.json()
@@ -274,11 +278,17 @@ def _validate_overlay_subnet(agent_subnet: str, overlay_subnet: Any, prefixlen: 
     try:
         allocated_subnet = ipaddress.ip_network(agent_subnet)
         assert allocated_subnet.prefixlen == prefixlen
-        assert allocated_subnet.overlaps(ipaddress.ip_network(overlay_subnet)),\
-            "Allocated subnet: {}".format(allocated_subnet)
+        assert allocated_subnet.overlaps(
+            ipaddress.ip_network(overlay_subnet)
+        ), f"Allocated subnet: {allocated_subnet}"
+
     except ValueError as ex:
-        raise AssertionError("Could not convert subnet(" + agent_subnet + ")\
-            network address: " + str(ex)) from ex
+        raise AssertionError(
+            f"Could not convert subnet({agent_subnet}"
+            + ")\
+            network address: "
+            + str(ex)
+        ) from ex
 
 
 def _validate_overlay_backend(overlay_name: str, backend: dict) -> None:
@@ -292,7 +302,7 @@ def _validate_overlay_backend(overlay_name: str, backend: dict) -> None:
             assert vtep_ip.startswith('44.128')
             assert vtep_ip.endswith('/20')
 
-        if overlay_name == 'dcos6':
+        elif overlay_name == 'dcos6':
             vtep_ip6 = vxlan['vtep_ip6']
             assert vtep_ip6.startswith('fd01:a')
             assert vtep_ip6.endswith('/64')
@@ -305,7 +315,7 @@ def _validate_overlay_backend(overlay_name: str, backend: dict) -> None:
         assert vxlan['vtep_name'] == 'vtep1024'
 
     except KeyError as ex:
-        raise AssertionError("Could not find key :" + str(ex)) from ex
+        raise AssertionError(f"Could not find key :{str(ex)}") from ex
 
 
 def test_if_cosmos_is_only_available_locally(dcos_api_session: DcosApiSession) -> None:
@@ -334,16 +344,11 @@ def nested_match(expect: Any, value: dict) -> bool:
     if expect == value:
         return True
     if isinstance(expect, dict) and isinstance(value, dict):
-        for k, v in expect.items():
-            if k in value:
-                if not nested_match(v, value[k]):
-                    return False
-            else:
-                return False
-        return True
+        return not any(
+            k in value and not nested_match(v, value[k]) or k not in value
+            for k, v in expect.items()
+        )
+
     if isinstance(expect, list) and isinstance(value, list):
-        for x, y in zip(expect, value):
-            if not nested_match(x, y):
-                return False
-        return True
+        return all(nested_match(x, y) for x, y in zip(expect, value))
     return False

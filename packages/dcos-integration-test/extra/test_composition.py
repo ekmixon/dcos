@@ -65,7 +65,7 @@ def test_if_all_mesos_masters_have_registered(dcos_api_session: DcosApiSession) 
     for znode in zk.get_children("/mesos"):
         if not znode.startswith("json.info_"):
             continue
-        master = json.loads(zk.get("/mesos/" + znode)[0].decode('utf-8'))
+        master = json.loads(zk.get(f"/mesos/{znode}")[0].decode('utf-8'))
         master_ips.append(master['address']['ip'])
     zk.stop()
 
@@ -81,7 +81,11 @@ def test_if_all_exhibitors_are_in_sync(dcos_api_session: DcosApiSession) -> None
     for master_node_ip in dcos_api_session.masters:
         # This relies on the fact that Admin Router always proxies the local
         # Exhibitor.
-        resp = requests.get('http://{}/exhibitor/exhibitor/v1/cluster/status'.format(master_node_ip), verify=False)
+        resp = requests.get(
+            f'http://{master_node_ip}/exhibitor/exhibitor/v1/cluster/status',
+            verify=False,
+        )
+
         assert resp.status_code == 200
 
         tested_data = sorted(resp.json(), key=lambda k: k['hostname'])

@@ -64,7 +64,7 @@ def find_mounts_matching(pattern):
     '''
     Find all matching mounts from the output of the mount command
     '''
-    print('Looking for mounts matching pattern "{}"'.format(pattern.pattern))
+    print(f'Looking for mounts matching pattern "{pattern.pattern}"')
     mounts = subprocess.check_output(['mount'], universal_newlines=True)
     return pattern.findall(mounts)
 
@@ -114,8 +114,9 @@ def get_mounts_and_freespace(matching_mounts, cache_mounts):
             # Per @cmaloney and @lingmann, we should hard exit here if volume
             # doesn't have sufficient space.
             raise VolumeDiscoveryException(
-                '{} has {} MB net free space, expected > 100M'.format(mount, net_free_space)
+                f'{mount} has {net_free_space} MB net free space, expected > 100M'
             )
+
         yield (mount, net_free_space)
 
 
@@ -140,12 +141,18 @@ def main(output_env_file, cache_env_file):
     @type output_env_file: str, filename to write resources
     '''
     if os.path.exists(output_env_file):
-        print('Volume discovery assumed to be completed because {} exists'.format(output_env_file))
+        print(
+            f'Volume discovery assumed to be completed because {output_env_file} exists'
+        )
+
         return
 
     cache_mounts = {}
     if os.path.exists(cache_env_file):
-        print('Mesos resources cache used for mount volumes because {} exists'.format(cache_env_file))
+        print(
+            f'Mesos resources cache used for mount volumes because {cache_env_file} exists'
+        )
+
         with open(cache_env_file) as f:
             data = None
             # The Mesos resources file is not a clean JSON file, it has comments
@@ -154,7 +161,7 @@ def main(output_env_file, cache_env_file):
             #
             # Changing the formatting of the file could break the caching logic
             # but test_make_disk_resources in DC/OS EE should detect such a bug.
-            for _, line in enumerate(f):
+            for line in f:
                 if line.startswith('MESOS_RESOURCES'):
                     data = json.loads(line[len('MESOS_RESOURCES=\''):-2])
             for item in data:
@@ -164,7 +171,7 @@ def main(output_env_file, cache_env_file):
 
     current_mounts = find_mounts_matching(MOUNT_PATTERN)
     mounts_dfree = list(get_mounts_and_freespace(current_mounts, cache_mounts))
-    print('Found matching mounts : {}'.format(mounts_dfree))
+    print(f'Found matching mounts : {mounts_dfree}')
 
     role = os.getenv('MESOS_DEFAULT_ROLE', '*')
 
@@ -176,10 +183,10 @@ def main(output_env_file, cache_env_file):
             )
         )
     )
-    print('Generated disk resources map: {}'.format(disk_resources))
+    print(f'Generated disk resources map: {disk_resources}')
 
     # write contents to a temporary file
-    tmp_file = '{}.tmp'.format(output_env_file)
+    tmp_file = f'{output_env_file}.tmp'
     with open(tmp_file, 'w') as env_file:
         env_file.write(RESOURCES_TEMPLATE_HEADER.format(prog=PROG, dt=datetime.now()))
         if disk_resources:
@@ -188,7 +195,11 @@ def main(output_env_file, cache_env_file):
             try:
                 resources = json.loads(env_resources)
             except ValueError as e:
-                print('ERROR: Invalid MESOS_RESOURCES JSON {} --- {}'.format(e, env_resources), file=sys.stderr)
+                print(
+                    f'ERROR: Invalid MESOS_RESOURCES JSON {e} --- {env_resources}',
+                    file=sys.stderr,
+                )
+
                 sys.exit(1)
             resources.extend(disk_resources)
             env_file.write(RESOURCES_TEMPLATE.format(res=json.dumps(resources)))
@@ -211,10 +222,10 @@ if __name__ == '__main__':
 
     if not ARGS.cache:
         # By default, the path of the cache is <ouput_file_path>.cache.
-        ARGS.cache = '{}.cache'.format(ARGS.output)
+        ARGS.cache = f'{ARGS.output}.cache'
 
     try:
         main(ARGS.output, ARGS.cache)
     except VolumeDiscoveryException as err:
-        print('ERROR: {}'.format(err), file=sys.stderr)
+        print(f'ERROR: {err}', file=sys.stderr)
         sys.exit(1)

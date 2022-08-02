@@ -18,10 +18,8 @@ class Mocker(MockerBase):
     repo."""
     def __init__(self):
         """Initialize new Mocker instance"""
-        extra_endpoints = []
+        extra_endpoints = [IamEndpoint(ip='127.0.0.1', port=8101)]
 
-        # Open DC/OS IAM
-        extra_endpoints.append(IamEndpoint(ip='127.0.0.1', port=8101))
         # gRPC endpoint, in Open without certs
         extra_endpoints.append(GRPCEndpoint(ip='127.0.0.1', port=2379))
 

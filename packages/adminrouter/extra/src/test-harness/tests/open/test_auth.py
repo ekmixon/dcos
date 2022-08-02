@@ -89,8 +89,8 @@ class TestOauthLoginIntegration:
             ouath_client_id=oa_client_id,
             ouath_auth_redirector=oa_redir)
         url = ar.make_url_from_path('/login?a=1&b=2')
-        expected_path = "{}/login?client={}&cluster_id={}&a=1&b=2".format(
-            oa_redir, oa_client_id, oa_cluster_id)
+        expected_path = f"{oa_redir}/login?client={oa_client_id}&cluster_id={oa_cluster_id}&a=1&b=2"
+
 
         with overridden_file_content('/var/lib/dcos/cluster-id', oa_cluster_id):
             with GuardedSubprocess(ar):

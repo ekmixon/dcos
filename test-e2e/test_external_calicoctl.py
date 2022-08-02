@@ -57,17 +57,7 @@ def calicoctl(tmpdir_factory: TempdirFactory) -> Callable[[List[str],
     return exec
 
 
-@pytest.mark.skipif(
-    only_changed(E2E_SAFE_DEFAULT + [
-        # All packages safe except named packages
-        'packages/*/**',
-        '!packages/{adminrouter,bouncer,calico,etcd,openssl}/**',
-        '!packages/python*/**',
-        # All e2e tests safe except this test
-        'test-e2e/test_*', '!' + escape(trailing_path(__file__, 2)),
-    ]),
-    reason='Only safe files modified',
-)
+@pytest.mark.skipif(only_changed((E2E_SAFE_DEFAULT + ['packages/*/**', '!packages/{adminrouter,bouncer,calico,etcd,openssl}/**', '!packages/python*/**', 'test-e2e/test_*', f'!{escape(trailing_path(__file__, 2))}'])), reason='Only safe files modified')
 def test_access(docker_backend: Docker,
                 artifact_path: Path,
                 request: SubRequest,
@@ -77,11 +67,11 @@ def test_access(docker_backend: Docker,
                 calicoctl: Callable[[List[str], Optional[dict]], dict],
                 ) -> None:
     with Cluster(
-            cluster_backend=docker_backend,
-            masters=1,
-            agents=0,
-            public_agents=0,
-    ) as cluster:
+                cluster_backend=docker_backend,
+                masters=1,
+                agents=0,
+                public_agents=0,
+        ) as cluster:
         uid = str(uuid.uuid4())
 
         config = {
@@ -107,7 +97,7 @@ def test_access(docker_backend: Docker,
 
         master = next(iter(cluster.masters))
         master_ip = master.public_ip_address
-        login_endpoint = 'http://{}/acs/api/v1/auth/login'.format(master_ip)
+        login_endpoint = f'http://{master_ip}/acs/api/v1/auth/login'
         service_login_token = jwt_token(uid, rsa_keypair[0], 30)
 
         token_response = requests.post(
@@ -117,15 +107,13 @@ def test_access(docker_backend: Docker,
 
         assert token_response.status_code == 200
         token = token_response.json().get('token')
-        env = {
-            'ETCD_ENDPOINTS': 'http://{}:12379'.format(master_ip),
-        }
+        env = {'ETCD_ENDPOINTS': f'http://{master_ip}:12379'}
 
         result = calicoctl(['get', 'nodes'], env)
         assert 'access denied' in result['stderr']
         assert result['returncode'] != 0
 
-        authorization = 'authorization:token={}'.format(token)
+        authorization = f'authorization:token={token}'
         env['ETCD_CUSTOM_GRPC_METADATA'] = authorization
         result = calicoctl(['get', 'nodes'], env)
         assert 'NAME' in result['stdout']

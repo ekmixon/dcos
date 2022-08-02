@@ -42,8 +42,9 @@ class TestServiceEndpoint:
         """
         path = urllib.parse.quote('/foo/a ?#z/')
         url = master_ar_process_perclass.make_url_from_path(
-            '/service/scheduler-alwaysthere/{}'.format(path)
+            f'/service/scheduler-alwaysthere/{path}'
         )
+
         resp = requests.get(url,
                             allow_redirects=False,
                             headers=valid_user_header)
@@ -89,9 +90,7 @@ class TestMetadata:
             self, master_ar_process_perclass, valid_user_header, public_ip):
         url = master_ar_process_perclass.make_url_from_path('/metadata')
 
-        with overridden_file_content(
-                '/usr/local/detect_ip_public_data.txt',
-                "return ip {}".format(public_ip)):
+        with overridden_file_content('/usr/local/detect_ip_public_data.txt', f"return ip {public_ip}"):
             resp = requests.get(
                 url,
                 allow_redirects=False,
@@ -213,11 +212,9 @@ class TestUiRoot:
             uniq_content,
             path):
 
-        url = master_ar_process_perclass.make_url_from_path('/{}'.format(path))
+        url = master_ar_process_perclass.make_url_from_path(f'/{path}')
 
-        with overridden_file_content(
-                '/var/lib/dcos/dcos-ui-update-service/dist/ui/{}'.format(path),
-                uniq_content):
+        with overridden_file_content(f'/var/lib/dcos/dcos-ui-update-service/dist/ui/{path}', uniq_content):
             resp = requests.get(
                 url,
                 allow_redirects=False,

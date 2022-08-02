@@ -29,22 +29,21 @@ class IamHTTPRequestHandler(RecordingHTTPRequestHandler):
         Raises:
             EndpointException: request URL path is unsupported
         """
-        match = self.USERS_QUERY_REGEXP.search(base_path)
-        if match:
+        if match := self.USERS_QUERY_REGEXP.search(base_path):
             return self.__users_permissions_request_handler(match.group(1))
 
         reflecting_paths = [
             '/acs/api/v1/reflect/me',
             '/acs/api/v1/uiconfig']
         if base_path.rstrip('/') in reflecting_paths or \
-                base_path.startswith('/acs/api/v1/auth/'):
+                    base_path.startswith('/acs/api/v1/auth/'):
             # A test URI that is used by tests. In some cases it is impossible
             # to reuse /acs/api/v1/users/ path.
             return self._reflect_request(base_path, url_args, body_args)
 
         raise EndpointException(
-            code=500,
-            content="Path `{}` is not supported yet".format(base_path))
+            code=500, content=f"Path `{base_path}` is not supported yet"
+        )
 
     def __users_permissions_request_handler(self, uid):
         ctx = self.server.context
@@ -52,8 +51,10 @@ class IamHTTPRequestHandler(RecordingHTTPRequestHandler):
         if not ctx.data['allowed']:
             res = {
                 "title": "Bad Request",
-                "description": "User `{}` not known.".format(uid),
-                "code": "ERR_UNKNOWN_USER_ID"}
+                "description": f"User `{uid}` not known.",
+                "code": "ERR_UNKNOWN_USER_ID",
+            }
+
 
             blob = self._convert_data_to_blob(res)
             return 404, 'application/json', blob

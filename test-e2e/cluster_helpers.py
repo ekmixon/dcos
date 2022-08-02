@@ -46,7 +46,7 @@ def artifact_dir_format(test_name: str) -> str:
     """
     Create a common target test directory name format.
     """
-    return test_name + '_' + str(datetime.now().isoformat().split('.')[0])
+    return f'{test_name}_' + str(datetime.now().isoformat().split('.')[0])
 
 
 def dump_cluster_journals(cluster: Cluster, target_dir: Path) -> None:
@@ -117,8 +117,7 @@ def _dump_stdout_to_file(node: Node, cmd: List[str], file_path: Path) -> None:
     proc = node.popen(args=cmd)
     with open(str(file_path), 'wb') as dumpfile:
         while True:
-            chunk = proc.stdout.read(chunk_size)
-            if chunk:
+            if chunk := proc.stdout.read(chunk_size):
                 dumpfile.write(chunk)
             else:
                 break

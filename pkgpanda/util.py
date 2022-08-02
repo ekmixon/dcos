@@ -32,15 +32,7 @@ is_windows = platform.system() == "Windows"
 
 
 def is_absolute_path(path):
-    if is_windows:
-        # We assume one char drive letter. Sometimes its two but not often
-        # pattern is <driveletter>:/string....
-        if path[1] == ':':
-            return True
-    else:
-        if path[0] == '/':
-            return True
-    return False
+    return bool(is_windows and path[1] == ':' or not is_windows and path[0] == '/')
 
 
 def remove_file(path):
@@ -104,36 +96,26 @@ def copy_directory(src_path, dst_path):
 
 def variant_str(variant):
     """Return a string representation of variant."""
-    if variant is None:
-        return ''
-    return variant
+    return '' if variant is None else variant
 
 
 def variant_object(variant_str):
     """Return a variant object from its string representation."""
-    if variant_str == '':
-        return None
-    return variant_str
+    return None if variant_str == '' else variant_str
 
 
 def variant_name(variant):
     """Return a human-readable string representation of variant."""
-    if variant is None:
-        return '<default>'
-    return variant
+    return '<default>' if variant is None else variant
 
 
 def variant_prefix(variant):
     """Return a filename prefix for variant."""
-    if variant is None:
-        return ''
-    return variant + '.'
+    return '' if variant is None else f'{variant}.'
 
 
 def variant_suffix(variant, delim='.'):
-    if variant is None:
-        return ''
-    return delim + variant
+    return '' if variant is None else delim + variant
 
 
 def get_requests_retry_session(max_retries=4, backoff_factor=1, status_forcelist=None):
@@ -192,7 +174,7 @@ def download(out_filename, url, work_dir, rm_on_error=True):
         if url.startswith('file://'):
             src_filename = url[len('file://'):]
             if not os.path.isabs(src_filename):
-                src_filename = work_dir + '/' + src_filename
+                src_filename = f'{work_dir}/{src_filename}'
             shutil.copyfile(src_filename, out_filename)
         else:
             _download_remote_file(out_filename, url)
@@ -216,7 +198,7 @@ def download(out_filename, url, work_dir, rm_on_error=True):
 
 def download_atomic(out_filename, url, work_dir):
     assert os.path.isabs(out_filename)
-    tmp_filename = out_filename + '.tmp'
+    tmp_filename = f'{out_filename}.tmp'
     try:
         download(tmp_filename, url, work_dir)
         shutil.move(tmp_filename, out_filename)
@@ -237,7 +219,7 @@ def extract_tarball(path, target):
     # TODO(cmaloney): Unpack into a temporary directory then move into place to
     # prevent partial extraction from ever laying around on the filesystem.
     try:
-        assert os.path.exists(path), "Path doesn't exist but should: {}".format(path)
+        assert os.path.exists(path), f"Path doesn't exist but should: {path}"
         make_directory(target)
 
         # TODO(tweidner): https://jira.mesosphere.com/browse/DCOS-48220
@@ -271,7 +253,7 @@ def load_yaml(filename):
         with open(filename) as f:
             return yaml.safe_load(f)
     except yaml.YAMLError as ex:
-        raise YamlParseError("Invalid YAML in {}: {}".format(filename, ex)) from ex
+        raise YamlParseError(f"Invalid YAML in {filename}: {ex}") from ex
 
 
 def write_yaml(filename, data, **kwargs):
@@ -354,11 +336,11 @@ def sha1(filename):
 
     with open(filename, 'rb') as fh:
         while 1:
-            buf = fh.read(4096)
-            if not buf:
-                break
-            hasher.update(buf)
+            if buf := fh.read(4096):
+                hasher.update(buf)
 
+            else:
+                break
     return hasher.hexdigest()
 
 
@@ -388,11 +370,7 @@ def _tar_filter(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
 
 def make_tar(result_filename, change_folder):
     tar_mode = ''
-    if is_windows:
-        tar_mode = 'w:gz'
-    else:
-        tar_mode = 'w:xz'
-
+    tar_mode = 'w:gz' if is_windows else 'w:xz'
     with tarfile.open(name=str(result_filename), mode=tar_mode) as tar:
         tar.add(name=str(change_folder), arcname='./', filter=_tar_filter)
 
@@ -436,9 +414,7 @@ def check_forbidden_services(path, services):
             continue
         pkg_srv_set.update(set(os.listdir(os.path.join(path, direntry))))
 
-    found_units = forbidden_srv_set.intersection(pkg_srv_set)
-
-    if found_units:
+    if found_units := forbidden_srv_set.intersection(pkg_srv_set):
         msg = "Reverved unit names found: " + ','.join(found_units)
         raise ValidationError(msg)
 
@@ -479,7 +455,7 @@ class TestRepo:
 
 def resources_test_dir(path):
     assert not path.startswith('/')
-    return "pkgpanda/test_resources/{}".format(path)
+    return f"pkgpanda/test_resources/{path}"
 
 
 class MessageLogger:
@@ -539,16 +515,16 @@ class MessageLogger:
 
 class PrintLogger:
     def customMessage(self, text, status, errorDetails='', flowId=None):  # noqa: N802, N803
-        print("{}: {} {}".format(status, text, errorDetails))
+        print(f"{status}: {text} {errorDetails}")
 
     def progressMessage(self, message):  # noqa: N802, N803
         pass
 
     def blockOpened(self, name, flowId=None):  # noqa: N802, N803
-        print("starting: {}".format(name))
+        print(f"starting: {name}")
 
     def blockClosed(self, name, flowId=None):  # noqa: N802, N803
-        print("completed: {}".format(name))
+        print(f"completed: {name}")
 
 
 logger = MessageLogger()
@@ -573,14 +549,12 @@ def hash_dict(d: dict):
 
 
 def hash_list(l: List[str]):
-    item_hashes = []
-    for item in sorted(l):
-        item_hashes.append(hash_checkout(item))
+    item_hashes = [hash_checkout(item) for item in sorted(l)]
     return hash_str(",".join(item_hashes))
 
 
 def hash_checkout(item):
-    if isinstance(item, str) or isinstance(item, bytes):
+    if isinstance(item, (str, bytes)):
         return hash_str(item)
     elif isinstance(item, dict):
         return hash_dict(item)
@@ -591,7 +565,7 @@ def hash_checkout(item):
     elif isinstance(item, set):
         return hash_list(list(item))
     else:
-        raise NotImplementedError("{} of type {}".format(item, type(item)))
+        raise NotImplementedError(f"{item} of type {type(item)}")
 
 
 def split_by_token(token_prefix, token_suffix, string_, strip_token_decoration=False):
@@ -612,9 +586,7 @@ def split_by_token(token_prefix, token_suffix, string_, strip_token_decoration=F
 
     def _next_substring(superstring, substring, start):
         idx = superstring.find(substring, start)
-        if idx < 0:
-            return None
-        return idx, idx + len(substring)
+        return None if idx < 0 else (idx, idx + len(substring))
 
     def _raise_exception_if_suffix_in(substring):
         if token_suffix in substring:

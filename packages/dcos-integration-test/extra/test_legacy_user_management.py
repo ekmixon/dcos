@@ -51,12 +51,11 @@ def skip_in_downstream() -> None:
 def get_users(dcos_api_session: DcosApiSession) -> dict:
     r = dcos_api_session.get('/acs/api/v1/users')
     r.raise_for_status()
-    users = {u['uid']: u for u in r.json()['array']}
-    return users
+    return {u['uid']: u for u in r.json()['array']}
 
 
 def delete_user(dcos_api_session: DcosApiSession, uid: str) -> None:
-    r = dcos_api_session.delete('/acs/api/v1/users/%s' % (uid, ))
+    r = dcos_api_session.delete(f'/acs/api/v1/users/{uid}')
     r.raise_for_status()
     assert r.status_code == 204
 
@@ -198,7 +197,7 @@ def test_dcos_add_user(dcos_api_session: DcosApiSession, new_dcos_cli: DcosCli) 
     script dcos_add_user.py.
     """
 
-    email_address = uuid.uuid4().hex + '@example.com'
+    email_address = f'{uuid.uuid4().hex}@example.com'
     command = ['python', '/opt/mesosphere/bin/dcos_add_user.py', email_address]
     new_dcos_cli.exec_command(command)
 
@@ -208,12 +207,13 @@ def test_dcos_add_user(dcos_api_session: DcosApiSession, new_dcos_cli: DcosCli) 
         expected_user_data = {
             "uid": email_address,
             "description": "",
-            "url": "/acs/api/v1/users/" + email_address,
+            "url": f"/acs/api/v1/users/{email_address}",
             "is_remote": True,
             "is_service": False,
             "provider_type": "oidc",
-            "provider_id": "https://dcos.auth0.com/"
+            "provider_id": "https://dcos.auth0.com/",
         }
+
         assert expected_user_data in r.json()['array']
     finally:
         delete_user(dcos_api_session, email_address)
@@ -225,17 +225,17 @@ def test_check_message_on_adding_user_twice(dcos_api_session: DcosApiSession, ne
     same user for the second time.
     """
 
-    email_address = uuid.uuid4().hex + '@example.com'
+    email_address = f'{uuid.uuid4().hex}@example.com'
     command = ['python', '/opt/mesosphere/bin/dcos_add_user.py', email_address]
     stdout, stderr = new_dcos_cli.exec_command(command)
 
     try:
-        expected_output = '[INFO] Created IAM user `' + email_address + '`\n'
+        expected_output = f'[INFO] Created IAM user `{email_address}' + '`\n'
         assert '' == stdout
         assert expected_output == stderr
 
         stdout, stderr = new_dcos_cli.exec_command(command)
-        expected_error = '[INFO] User `' + email_address + '` already exists\n'
+        expected_error = f'[INFO] User `{email_address}' + '` already exists\n'
         assert expected_error == stderr
         assert '' == stdout
     finally:

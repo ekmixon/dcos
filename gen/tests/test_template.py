@@ -134,10 +134,13 @@ def test_get_filters():
 def test_render():
     assert(parse_str("a").render({}) == "a")
     assert(parse_str("{{ a }}a{{ b }}").render({"a": "1", "b": "2"}) == "1a2")
-    assert(parse_str("{{ a | foo }}a{{ b }}").render(
-        {"a": "1", "b": "2"},
-        {'foo': lambda x: x + 'foo'}
-    ) == "1fooa2")
+    assert (
+        parse_str("{{ a | foo }}a{{ b }}").render(
+            {"a": "1", "b": "2"}, {'foo': lambda x: f'{x}foo'}
+        )
+        == "1fooa2"
+    )
+
     with pytest.raises(UnsetParameter):
         parse_str("{{ a }}a{{ b }}").render({"a": "1"})
     with pytest.raises(UnsetParameter):

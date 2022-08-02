@@ -114,7 +114,7 @@ def exercise_storage_provider(tmpdir, name, config):
 
     def get_path(path):
         assert not path.startswith('/')
-        return test_base_path + '/' + path
+        return f'{test_base_path}/{path}'
 
     def check_file(path, contents):
         # The store should be internally consistent / API return it exists now.
@@ -127,7 +127,7 @@ def exercise_storage_provider(tmpdir, name, config):
         assert curl_fetch(path) == contents
 
     def make_content(name):
-        return (name + " " + uuid.uuid4().hex).encode()
+        return f"{name} {uuid.uuid4().hex}".encode()
 
     try:
         # Test uploading bytes.
@@ -201,9 +201,10 @@ def test_storage_provider_aws(release_config_aws, tmpdir):
     s3 = boto3.session.Session().resource('s3')
     bucket = release_config_aws['bucket']
     s3_bucket = s3.Bucket(bucket)
-    assert s3_bucket in s3.buckets.all(), (
-        "Bucket '{}' must exist with full write access to AWS testing account and created objects must be globally "
-        "downloadable from: {}").format(bucket, release_config_aws['download_url'])
+    assert (
+        s3_bucket in s3.buckets.all()
+    ), f"Bucket '{bucket}' must exist with full write access to AWS testing account and created objects must be globally downloadable from: {release_config_aws['download_url']}"
+
 
     exercise_storage_provider(tmpdir, 'aws_s3', release_config_aws)
 
@@ -412,17 +413,32 @@ def test_repository():
     # Repository path with no channel (Like we'd do for a stable or EA release).
     no_channel = release.Repository("stable", None, "commit/testing_commit_2")
     assert no_channel.channel_prefix == ''
-    assert no_channel.reproducible_artifact_path + 'foo' == 'stable/commit/testing_commit_2/foo'
-    assert no_channel.path_channel_prefix + 'bar' == 'stable/bar'
-    assert no_channel.path_prefix + "a/baz--foo.tar.xz" == 'stable/a/baz--foo.tar.xz'
+    assert (
+        f'{no_channel.reproducible_artifact_path}foo'
+        == 'stable/commit/testing_commit_2/foo'
+    )
+
+    assert f'{no_channel.path_channel_prefix}bar' == 'stable/bar'
+    assert (
+        f"{no_channel.path_prefix}a/baz--foo.tar.xz"
+        == 'stable/a/baz--foo.tar.xz'
+    )
+
     exercise_make_commands(no_channel)
 
     # Repository path with a channel (Like we do for PRs)
     with_channel = release.Repository("testing", "pull/283", "commit/testing_commit_3")
     assert with_channel.channel_prefix == 'pull/283/'
-    assert with_channel.reproducible_artifact_path + "foo" == 'testing/pull/283/commit/testing_commit_3/foo'
-    assert with_channel.path_channel_prefix + "bar" == 'testing/pull/283/bar'
-    assert with_channel.path_prefix + "a/baz--foo.tar.xz" == 'testing/a/baz--foo.tar.xz'
+    assert (
+        f"{with_channel.reproducible_artifact_path}foo"
+        == 'testing/pull/283/commit/testing_commit_3/foo'
+    )
+
+    assert f"{with_channel.path_channel_prefix}bar" == 'testing/pull/283/bar'
+    assert (
+        f"{with_channel.path_prefix}a/baz--foo.tar.xz"
+        == 'testing/a/baz--foo.tar.xz'
+    )
     # TODO(cmaloney): Exercise make_commands with a channel.
 
 
@@ -550,7 +566,7 @@ def test_make_stable_artifacts(monkeypatch, tmpdir):
 # NOTE: Implicitly tests all gen.build_deploy do_create functions since it calls them.
 # TODO(cmaloney): Test make_channel_artifacts, module do_create functions
 def mock_make_installer_docker(variant, bootstrap_id, installer_bootstrap_id):
-    return "dcos_generate_config." + variant_prefix(variant) + "sh"
+    return f"dcos_generate_config.{variant_prefix(variant)}sh"
 
 
 def mock_get_cf_s3_url():
@@ -639,7 +655,7 @@ def test_make_channel_artifacts(monkeypatch, release_config_aws):
 
 def test_make_abs():
     assert release.make_abs("/foo") == '/foo'
-    assert release.make_abs("foo") == os.getcwd() + '/foo'
+    assert release.make_abs("foo") == f'{os.getcwd()}/foo'
 
 
 # TODO(cmaloney): Test do_build_packages?

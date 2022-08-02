@@ -31,17 +31,14 @@ def run(cmd, *args, **kwargs):
     command = ' '.join(cmd)
 
     if DEBUG:
-        print('command: `{}`'.format(command))
+        print(f'command: `{command}`')
 
     result = subprocess.run(cmd, *args, **kwargs)
     if result.stderr:
         sys.stderr.buffer.write(result.stderr)
 
     if DEBUG:
-        print('command: `{}` exited with status `{}`'.format(
-            command,
-            result.returncode,
-        ))
+        print(f'command: `{command}` exited with status `{result.returncode}`')
 
     return result
 
@@ -93,10 +90,7 @@ def check_for_unit(unit: str) -> int:
 def is_unit_active(unit: str) -> bool:
     result = run(['systemctl', 'is-active', unit],
                  stdout=subprocess.PIPE)
-    if result.returncode == 0:
-        return True
-
-    return False
+    return result.returncode == 0
 
 
 def copy_file(src, dst) -> bool:
@@ -116,12 +110,12 @@ def add_config(unit: str, path: str, src: str) -> int:
     result = check_for_unit(unit)
     if result < 0:
         if DEBUG:
-            print('Unit {} does not exist'.format(unit))
+            print(f'Unit {unit} does not exist')
         return 0
 
     if result != 0:
         if DEBUG:
-            print('Error listing units: {}'.format(result))
+            print(f'Error listing units: {result}')
         return result
 
     # Copy the configuration

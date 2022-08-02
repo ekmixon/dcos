@@ -246,7 +246,7 @@ class MesosHTTPRequestHandler(RecordingHTTPRequestHandler):
             return self._reflect_request(base_path, url_args, body_args)
 
         if base_path != '/master/state-summary':
-            msg = "Path `{}` is not supported yet".format(base_path)
+            msg = f"Path `{base_path}` is not supported yet"
             blob = msg.encode('utf-8')
             raise EndpointException(code=500, reason=blob)
 

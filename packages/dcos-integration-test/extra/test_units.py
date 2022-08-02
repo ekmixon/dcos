@@ -53,14 +53,7 @@ def test_verify_units() -> None:
                         # well-known directives that got added to newer
                         # versions of systemd.
                         unknown_lvalue_err = "Unknown lvalue '%s'" % directive
-                        if unknown_lvalue_err in line:
-                            # This version of systemd does not understand this
-                            # directive. It got added in newer versions.
-                            # As systemd ignores directives it does not
-                            # understand this is not a problem and we simply
-                            # ignore this error.
-                            pass
-                        else:
+                        if unknown_lvalue_err not in line:
                             # Whatever problem systemd-analyze sees in this
                             # line is more significant than a simple
                             # 'unknown lvalue' complaint. We treat it as a
@@ -70,7 +63,7 @@ def test_verify_units() -> None:
 
                 for line in cmd.stdout.split("\n"):
                     if not _check_line(line):
-                        pytest.fail("Invalid systemd unit: " + line)
+                        pytest.fail(f"Invalid systemd unit: {line}")
 
     _check_units("/etc/systemd/system/dcos-*.service")
     _check_units("/etc/systemd/system/dcos-*.socket")
@@ -99,12 +92,9 @@ def test_socket_units() -> None:
                 user = v
             if k == "SocketGroup":
                 group = v
-            if k == "ListenStream":
-                # Unix sockets are distinguished from IP sockets by having a '/' as the first
-                # character in the value of the ListenStream directive.
-                if v.startswith("/"):
-                    had_unix_socket = True
-                    assert v.startswith("/run/dcos/"), "DC/OS unix sockets must go in the /run/dcos directory"
+            if k == "ListenStream" and v.startswith("/"):
+                had_unix_socket = True
+                assert v.startswith("/run/dcos/"), "DC/OS unix sockets must go in the /run/dcos directory"
             if k == "SocketMode":
                 mode = v
         if not had_unix_socket:
@@ -125,7 +115,7 @@ def test_socket_files() -> None:
         if not path.is_socket():
             # This is not a unix socket file, ignore.
             continue
-        logging.info("Checking socket file {}".format(file))
+        logging.info(f"Checking socket file {file}")
         assert path.owner() == "root"
         assert path.group() == "dcos_adminrouter"
         assert stat.S_IMODE(path.stat().st_mode) == 0o660

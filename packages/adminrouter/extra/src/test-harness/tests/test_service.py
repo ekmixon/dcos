@@ -77,9 +77,9 @@ class TestServiceStateful:
         generic_correct_upstream_dest_test(
             master_ar_process_pertest,
             valid_user_header,
-            '/service/{}/foo/bar/'.format(SCHEDULER_FWRK_ALWAYSTHERE_ID),
-            "http://127.0.0.15:16001"
-            )
+            f'/service/{SCHEDULER_FWRK_ALWAYSTHERE_ID}/foo/bar/',
+            "http://127.0.0.15:16001",
+        )
 
     def test_if_webui_url_is_resolved_using_framework_name(
             self, master_ar_process_pertest, mocker, valid_user_header):
@@ -226,9 +226,9 @@ class TestServiceStateful:
         generic_correct_upstream_dest_test(
             master_ar_process_pertest,
             valid_user_header,
-            '/service/{}/foo/bar/'.format(SCHEDULER_FWRK_ALWAYSTHERE_ID),
-            "http://127.0.0.15:16001"
-            )
+            f'/service/{SCHEDULER_FWRK_ALWAYSTHERE_ID}/foo/bar/',
+            "http://127.0.0.15:16001",
+        )
 
     def test_if_webui_url_path_is_normalized(
             self, master_ar_process_pertest, mocker, valid_user_header):

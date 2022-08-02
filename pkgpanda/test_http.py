@@ -20,15 +20,17 @@ def assert_response(response, status_code, body, headers=None, body_cmp=operator
     """
     headers = headers or {}
 
-    assert response.status_code == status_code, (
-        'Expected status code {}, got {}'.format(status_code, response.status_code)
-    )
+    assert (
+        response.status_code == status_code
+    ), f'Expected status code {status_code}, got {response.status_code}'
+
 
     for header, value in headers.items():
         response_value = response.headers.get(header)
-        assert response_value == value, (
-            'Expected {} header value {}, got {}'.format(header, value, response_value)
-        )
+        assert (
+            response_value == value
+        ), f'Expected {header} header value {value}, got {response_value}'
+
 
     assert body_cmp(response.data, body), 'Unexpected response body'
 
@@ -211,13 +213,16 @@ def test_fetch_package(tmpdir):
         client.post(
             '/repository/mesos--0.22.0',
             content_type='application/json',
-            data=json.dumps({
-                'repository_url': 'file://{}/{}/'.format(os.getcwd(), resources_test_dir('remote_repo'))
-            }),
+            data=json.dumps(
+                {
+                    'repository_url': f"file://{os.getcwd()}/{resources_test_dir('remote_repo')}/"
+                }
+            ),
         ),
         204,
         b'',
     )
+
     assert_json_response(client.get('/repository/'), 200, ['mesos--0.22.0'])
 
     # No repository URL provided.
@@ -235,9 +240,11 @@ def test_fetch_package(tmpdir):
         client.post(
             '/repository/invalid---package',
             content_type='application/json',
-            data=json.dumps({
-                'repository_url': 'file://{}/'.format(resources_test_dir('remote_repo'))
-            }),
+            data=json.dumps(
+                {
+                    'repository_url': f"file://{resources_test_dir('remote_repo')}/"
+                }
+            ),
         ),
         400,
     )
@@ -260,7 +267,7 @@ def test_remove_package(tmpdir):
         package_to_delete,
         body_cmp=lambda response_body, package: package in response_body,
     )
-    assert_response(client.delete('/repository/' + package_to_delete), 204, b'')
+    assert_response(client.delete(f'/repository/{package_to_delete}'), 204, b'')
     assert_json_response(
         client.get('/repository/'),
         200,
@@ -276,7 +283,7 @@ def test_remove_package(tmpdir):
         package_to_delete,
         body_cmp=lambda response_body, package: package in response_body,
     )
-    assert_error(client.delete('/repository/' + package_to_delete), 409)
+    assert_error(client.delete(f'/repository/{package_to_delete}'), 409)
     assert_json_response(
         client.get('/active/'),
         200,

@@ -37,7 +37,7 @@ def make_arguments(new_arguments):
         'oauth_enabled': 'true',
         'enable_docker_gc': 'false',
     })
-    arguments.update(new_arguments)
+    arguments |= new_arguments
     return arguments
 
 

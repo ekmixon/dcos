@@ -33,7 +33,7 @@ def set_num_replicas(my_internal_ip: str, num_replicas: int) -> None:
     nodes.
     Relevant JIRA ticket: https://jira.mesosphere.com/browse/DCOS-20352
     """
-    zone_config = 'num_replicas = {}'.format(num_replicas)
+    zone_config = f'num_replicas = {num_replicas}'
 
     # If more entities that must have their `num_replicas` setting adjusted are
     # added to CockroachDB, a DC/OS check will fail on all clusters (DC/OS OSS
@@ -106,7 +106,7 @@ def get_expected_master_node_count() -> int:
 def main() -> None:
     # Determine the internal IP address of this node.
     my_internal_ip = utils.detect_ip()
-    log.info('My internal IP address is `{}`'.format(my_internal_ip))
+    log.info(f'My internal IP address is `{my_internal_ip}`')
 
     master_node_count = get_expected_master_node_count()
     log.info('Expected number of DC/OS master nodes: %s', master_node_count)

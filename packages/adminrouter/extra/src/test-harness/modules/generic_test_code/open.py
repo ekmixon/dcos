@@ -30,6 +30,6 @@ def assert_iam_queried_for_uid(mocker, uid, expect_two_iam_calls=False):
         assert len(upstream_requests) == 1
     else:
         assert len(upstream_requests) == 2
-    assert upstream_requests[0]['path'] == '/acs/api/v1/users/{}'.format(uid)
+    assert upstream_requests[0]['path'] == f'/acs/api/v1/users/{uid}'
     assert upstream_requests[0]['method'] == 'GET'
     assert upstream_requests[0]['request_version'] == 'HTTP/1.0'

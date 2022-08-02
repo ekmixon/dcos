@@ -12,13 +12,19 @@ def test_fetch(tmpdir):
     # succeeds when there isn't anything yet.
     # Start a simpleHTTPServer to serve the packages
     # fetch a couple packages
-    assert run([
-               "pkgpanda",
-               "fetch",
-               "mesos--0.22.0",
-               "--repository={0}".format(tmpdir),
-               "--repository-url=file://{}/".format(resources_test_dir('remote_repo'))
-               ]) == fetch_output
+    assert (
+        run(
+            [
+                "pkgpanda",
+                "fetch",
+                "mesos--0.22.0",
+                "--repository={0}".format(tmpdir),
+                f"--repository-url=file://{resources_test_dir('remote_repo')}/",
+            ]
+        )
+        == fetch_output
+    )
+
 
     # Ensure that the package at least somewhat extracted correctly.
     expect_fs(

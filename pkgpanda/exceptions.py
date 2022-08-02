@@ -7,7 +7,8 @@ class FetchError(Exception):
         self.rm_failed = rm_failed
 
     def __str__(self):
-        msg = "Problem fetching {} to {} because of {}.".format(self.url, self.out_filename, self.base_exception)
+        msg = f"Problem fetching {self.url} to {self.out_filename} because of {self.base_exception}."
+
 
         if self.rm_failed:
             msg += " Unable to remove partial download. Future builds may have problems because of it.".format(
@@ -24,12 +25,7 @@ class IncompleteDownloadError(Exception):
         self.content_length = content_length
 
     def __str__(self):
-        msg = "Problem fetching {} - bytes read {} does not match content-length {}".format(
-            self.url,
-            self.total_bytes_read,
-            self.content_length)
-
-        return msg
+        return f"Problem fetching {self.url} - bytes read {self.total_bytes_read} does not match content-length {self.content_length}"
 
 
 class InstallError(Exception):

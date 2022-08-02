@@ -40,10 +40,7 @@ def dcos_api_session(dcos_api_session_factory: Any) -> Any:
 
 
 def pytest_cmdline_main(config: Any) -> None:
-    user_outside_cluster = True
-    if os.path.exists('/opt/mesosphere/bin/dcos-shell'):
-        user_outside_cluster = False
-
+    user_outside_cluster = not os.path.exists('/opt/mesosphere/bin/dcos-shell')
     if user_outside_cluster and config.option.env_help:
         print(env_helper.HELP_MESSAGE)
         sys.exit()
@@ -55,11 +52,10 @@ def pytest_cmdline_main(config: Any) -> None:
         if not config.option.tx:
             env_string = '//env:PYTEST_LOCALE=en_US.utf8'
             options = '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null '
-            key_path = os.getenv('DCOS_SSH_KEY_PATH')
-            if key_path:
-                options += '-i ' + key_path
+            if key_path := os.getenv('DCOS_SSH_KEY_PATH'):
+                options += f'-i {key_path}'
             for k, v in env_vars.items():
-                env_string += '//env:{}={}'.format(k, v)
+                env_string += f'//env:{k}={v}'
                 config.option.tx = [
                     'ssh={options} {DCOS_SSH_USER}@{master_ip}//python=/opt/mesosphere/bin/dcos-shell '
                     'python{env_string}'
@@ -200,7 +196,7 @@ def _dump_diagnostics(request: requests.Request, dcos_api_session: DcosApiSessio
         diagnostics.wait_for_diagnostics_job(last_datapoint=last_datapoint)
 
         duration = last_datapoint['time'] - creation_start  # type: ignore
-        log.info('\nDiagnostis bundle took {} to generate'.format(duration))
+        log.info(f'\nDiagnostis bundle took {duration} to generate')
 
         log.info('\nWait for diagnostics report to become available')
         diagnostics.wait_for_diagnostics_reports()

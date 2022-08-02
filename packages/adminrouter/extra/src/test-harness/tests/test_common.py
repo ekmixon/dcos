@@ -20,8 +20,7 @@ class TestNginxWorkersGroup:
             self, ar_process):
         gid = grp.getgrnam('dcos_adminrouter').gr_gid
         for proc in psutil.process_iter():
-            if proc.pid == ar_process.pid:
-                if proc.children():
-                    for child in proc.children():
-                        effective_gid = child.gids()[1]
-                        assert gid == effective_gid, "Process not running as dcos_adminrouter"
+            if proc.pid == ar_process.pid and proc.children():
+                for child in proc.children():
+                    effective_gid = child.gids()[1]
+                    assert gid == effective_gid, "Process not running as dcos_adminrouter"

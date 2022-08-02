@@ -112,21 +112,21 @@ class TestStateCacheUpdate:
     retry_on_exception=lambda e: isinstance(e, AssertionError),
 )
 def _wait_for_state_cache_refresh(dcos_api_session: DcosApiSession, service: str) -> None:
-    result = dcos_api_session.get('/service{}'.format(service), timeout=2)
+    result = dcos_api_session.get(f'/service{service}', timeout=2)
     assert result.status_code == 200
 
 
 def _marathon_container_network_nginx_app(port_index: int = 0) -> dict:
     app_id = str(uuid.uuid4())
-    app_definition = {
-        'id': '/nginx-{}'.format(app_id),
+    return {
+        'id': f'/nginx-{app_id}',
         'cpus': 0.1,
         'instances': 1,
         'mem': 64,
         'networks': [{'mode': 'container/bridge'}],
         'requirePorts': False,
         'labels': {
-            'DCOS_SERVICE_NAME': 'nginx-{}'.format(app_id),
+            'DCOS_SERVICE_NAME': f'nginx-{app_id}',
             'DCOS_SERVICE_SCHEME': 'http',
             'DCOS_SERVICE_PORT_INDEX': str(port_index),
         },
@@ -136,18 +136,15 @@ def _marathon_container_network_nginx_app(port_index: int = 0) -> dict:
                 'image': 'bitnami/nginx:latest',
                 'forcePullImage': True,
                 'privileged': False,
-                'parameters': []
+                'parameters': [],
             },
             'portMappings': [
                 {
                     'containerPort': 8080,
-                    'labels': {
-                        'VIP_0': '/nginx-{}:8080'.format(app_id),
-                    },
+                    'labels': {'VIP_0': f'/nginx-{app_id}:8080'},
                     'protocol': 'tcp',
                     'name': 'http',
                 }
-            ]
-        }
+            ],
+        },
     }
-    return app_definition

@@ -45,7 +45,7 @@ def test_stringify_config():
     stringify = gen.stringify_configuration
 
     # Basic cases pass right through
-    assert dict() == stringify(dict())
+    assert {} == stringify({})
     assert {"foo": "bar"} == stringify({"foo": "bar"})
     assert {"a": "b", "c": "d"} == stringify({"a": "b", "c": "d"})
 

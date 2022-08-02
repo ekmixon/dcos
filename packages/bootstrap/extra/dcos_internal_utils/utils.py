@@ -112,19 +112,16 @@ def valid_ipv4_address(ip):
     try:
         socket.inet_pton(socket.AF_INET, ip)
         return True
-    except OSError:
-        return False
-    except TypeError:
+    except (OSError, TypeError):
         return False
 
 
 # Copied from gen/calc.py#L87-L102
 def validate_ipv4_addresses(ips: list):
-    invalid_ips = []
-    for ip in ips:
-        if not valid_ipv4_address(ip):
-            invalid_ips.append(ip)
-    assert not invalid_ips, 'Invalid IPv4 addresses in list: {}'.format(', '.join(invalid_ips))
+    invalid_ips = [ip for ip in ips if not valid_ipv4_address(ip)]
+    assert (
+        not invalid_ips
+    ), f"Invalid IPv4 addresses in list: {', '.join(invalid_ips)}"
 
 
 def detect_ip():

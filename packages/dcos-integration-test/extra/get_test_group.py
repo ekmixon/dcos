@@ -25,8 +25,7 @@ def patterns_from_group(group_name: str, test_groups_path: str = 'test_groups.ya
     test_group_file = Path(test_groups_path)
     test_group_file_contents = test_group_file.read_text()
     test_groups = yaml.safe_load(test_group_file_contents)['groups']
-    group = test_groups[group_name]  # type: List[str]
-    return group
+    return test_groups[group_name]
 
 
 @click.command('list-integration-test-patterns')

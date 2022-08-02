@@ -29,7 +29,7 @@ class HttpStorageProvider(AbstractStorageProvider):
         raise NotImplementedError()
 
     def download_inner(self, path, local_path):
-        local_path_tmp = '{}.tmp'.format(local_path)
+        local_path_tmp = f'{local_path}.tmp'
         url = self._get_absolute(path)
         try:
             with open(local_path_tmp, 'w+b') as f:

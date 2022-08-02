@@ -164,7 +164,7 @@ def zk_connect(zk_user: Optional[str] = None, zk_secret: Optional[str] = None) -
     if zk_user and zk_secret:
         default_acl = [make_digest_acl(zk_user, zk_secret, all=True)]
         scheme = 'digest'
-        credential = "{}:{}".format(zk_user, zk_secret)
+        credential = f"{zk_user}:{zk_secret}"
         auth_data = [(scheme, credential)]
     zk = KazooClient(
         hosts="127.0.0.1:2181",
@@ -181,9 +181,9 @@ def zk_connect(zk_user: Optional[str] = None, zk_secret: Optional[str] = None) -
 # The prefix used for cockroachdb in ZK.
 ZK_PATH = "/cockroach"
 # The path of the ZNode used for locking.
-ZK_LOCK_PATH = ZK_PATH + "/lock"
+ZK_LOCK_PATH = f"{ZK_PATH}/lock"
 # The path of the ZNode containing the list of cluster members.
-ZK_NODES_PATH = ZK_PATH + "/nodes"
+ZK_NODES_PATH = f"{ZK_PATH}/nodes"
 # The id to use when contending for the ZK lock.
 LOCK_CONTENDER_ID = "{hostname}:{pid}".format(
     hostname=socket.gethostname(),
@@ -452,14 +452,14 @@ def _get_registered_nodes(zk: KazooClient, zk_path: str) -> List[str]:
     # We call `sync()` before reading the value in order to
     # read the latest data written to ZooKeeper.
     # See https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#ch_zkGuarantees
-    log.info("Calling sync() on ZNode `{}`".format(zk_path))
+    log.info(f"Calling sync() on ZNode `{zk_path}`")
     zk.sync(zk_path)
-    log.info("Loading data from ZNode `{}`".format(zk_path))
+    log.info(f"Loading data from ZNode `{zk_path}`")
     data, _ = zk.get(zk_path)
     if data:
         log.info("Cluster was previously initialized.")
         nodes = json.loads(data.decode('ascii'))['nodes']  # type: List[str]
-        log.info("Found registered nodes: {}".format(nodes))
+        log.info(f"Found registered nodes: {nodes}")
         return nodes
     log.info("Found no registered nodes.")
     return []
@@ -479,24 +479,24 @@ def _register_cluster_membership(zk: KazooClient, zk_path: str, ip: str) -> List
         ip:
             The ip to add to the list of cluster member IPs in ZooKeeper.
     """
-    log.info("Registering cluster membership for `{}`".format(ip))
+    log.info(f"Registering cluster membership for `{ip}`")
     # Get the latest list of cluster members.
     nodes = _get_registered_nodes(zk=zk, zk_path=zk_path)
     if ip in nodes:
         # We're already registered with ZK.
-        log.info("Cluster member `{}` already registered in ZooKeeper. Skipping.".format(ip))
+        log.info(f"Cluster member `{ip}` already registered in ZooKeeper. Skipping.")
         return nodes
-    log.info("Adding `{}` to list of nodes `{}`".format(ip, nodes))
+    log.info(f"Adding `{ip}` to list of nodes `{nodes}`")
     nodes.append(ip)
     zk.set(zk_path, json.dumps({"nodes": nodes}).encode("ascii"))
     zk.sync(zk_path)
-    log.info("Successfully registered cluster membership for `{}`".format(ip))
+    log.info(f"Successfully registered cluster membership for `{ip}`")
     return nodes
 
 
 def _dump_nodes_to_file(nodes: List[str], file_path: str) -> None:
     with open(file_path, 'w') as f:
-        log.info("Writing nodes {} to file {}".format(','.join(nodes), file_path))
+        log.info(f"Writing nodes {','.join(nodes)} to file {file_path}")
         f.write(','.join(nodes))
 
 
@@ -505,7 +505,7 @@ def main() -> None:
 
     # Determine our internal IP.
     my_ip = utils.detect_ip()
-    log.info("My IP is `{}`".format(my_ip))
+    log.info(f"My IP is `{my_ip}`")
 
     # Connect to ZooKeeper.
     log.info("Connecting to ZooKeeper.")
@@ -519,16 +519,10 @@ def main() -> None:
     zk.ensure_path("/cockroach/nodes")
     zk.ensure_path("/cockroach/locking")
 
-    # Determine whether the cluster has been bootstrapped already by
-    # checking whether the `ZK_NODES_PATH` ZNode has children. This is
-    # best-effort as we aren't holding the lock, but we do call
-    # `zk.sync()` which is supposed to ensure that we read the latest
-    # value from ZK.
-    nodes = _get_registered_nodes(zk=zk, zk_path=ZK_NODES_PATH)
-    if nodes:
+    if nodes := _get_registered_nodes(zk=zk, zk_path=ZK_NODES_PATH):
         # The cluster has already been initialized. Dump the node IPs to
         # `NODES_FILE_PATH` and exit.
-        log.info("Cluster has members registered already: {}".format(nodes))
+        log.info(f"Cluster has members registered already: {nodes}")
         if my_ip not in nodes:
             log.info("IP not found in list of nodes. Registering cluster membership.")
             with _zk_lock(zk=zk, lock_path=ZK_LOCK_PATH, contender_id=LOCK_CONTENDER_ID, timeout=ZK_LOCK_TIMEOUT):
@@ -557,14 +551,12 @@ def main() -> None:
         # We check that the cluster hasn't been bootstrapped since we
         # first read the list of nodes from ZK.
         log.info("Checking for registered nodes while holding lock.")
-        nodes = _get_registered_nodes(zk=zk, zk_path=ZK_NODES_PATH)
-        if nodes:
+        if nodes := _get_registered_nodes(zk=zk, zk_path=ZK_NODES_PATH):
             # The cluster has been bootstrapped since we checked. We join the
             # existing cluster and dump the node IPs.
-            log.info("Cluster has already been initialized: {}".format(nodes))
+            log.info(f"Cluster has already been initialized: {nodes}")
             nodes = _register_cluster_membership(zk=zk, zk_path=ZK_NODES_PATH, ip=my_ip)
             _dump_nodes_to_file(nodes, NODES_FILE_PATH)
-            return
         else:
             log.info("Cluster has not been initialized yet.")
             # The cluster still has not been bootstrapped. We start
@@ -580,7 +572,7 @@ def main() -> None:
             nodes = _register_cluster_membership(zk=zk, zk_path=ZK_NODES_PATH, ip=my_ip)
             _dump_nodes_to_file(nodes, NODES_FILE_PATH)
             log.info("Successfully initialized cluster.")
-            return
+        return
 
 
 if __name__ == '__main__':

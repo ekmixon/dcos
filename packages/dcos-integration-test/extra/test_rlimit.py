@@ -15,16 +15,18 @@ def test_if_rlimits_can_be_used(dcos_api_session: DcosApiSession) -> None:
     The job then examines the actual limit, and returns a failure if another
     value is found."""
 
-    name = 'test-rlimits-{}'.format(uuid.uuid4().hex)
+    name = f'test-rlimits-{uuid.uuid4().hex}'
 
     argv = [
         '/opt/mesosphere/bin/mesos-execute',
         '--rlimits={"rlimits": [{"type":"RLMT_CORE"}]}',
         '--master=leader.mesos:5050',
-        '--name={}'.format(name),
+        f'--name={name}',
         '--command=ulimit -c | grep -q unlimited',
         '--shell=true',
-        '--env={"LC_ALL":"C"}']
+        '--env={"LC_ALL":"C"}',
+    ]
+
 
     output = subprocess.check_output(
         argv,

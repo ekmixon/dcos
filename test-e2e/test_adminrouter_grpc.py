@@ -19,17 +19,7 @@ from dcos_e2e.cluster import Cluster
 from dcos_e2e.node import Output
 
 
-@pytest.mark.skipif(
-    only_changed(E2E_SAFE_DEFAULT + [
-        # All packages safe except named packages
-        'packages/*/**',
-        '!packages/{adminrouter,bootstrap,bouncer,bouncer-deps,etcd,openssl}/**',
-        '!packages/python*/**',
-        # All e2e tests safe except this test
-        'test-e2e/test_*', '!' + escape(trailing_path(__file__, 2)),
-    ]),
-    reason='Only safe files modified',
-)
+@pytest.mark.skipif(only_changed((E2E_SAFE_DEFAULT + ['packages/*/**', '!packages/{adminrouter,bootstrap,bouncer,bouncer-deps,etcd,openssl}/**', '!packages/python*/**', 'test-e2e/test_*', f'!{escape(trailing_path(__file__, 2))}'])), reason='Only safe files modified')
 def test_adminrouter_grpc_proxy_port(docker_backend: Docker,
                                      artifact_path: Path,
                                      request: SubRequest,
@@ -40,18 +30,19 @@ def test_adminrouter_grpc_proxy_port(docker_backend: Docker,
     random_port = random.randint(63000, 64000)
 
     with Cluster(
-            cluster_backend=docker_backend,
-            masters=1,
-            agents=0,
-            public_agents=0,
-    ) as cluster:
+                cluster_backend=docker_backend,
+                masters=1,
+                agents=0,
+                public_agents=0,
+        ) as cluster:
         uid = str(uuid.uuid4())
 
         config = {
             'superuser_service_account_uid': uid,
             'superuser_service_account_public_key': rsa_keypair[1],
-            'adminrouter_grpc_proxy_port': '{}'.format(random_port),
+            'adminrouter_grpc_proxy_port': f'{random_port}',
         }
+
 
         cluster.install_dcos_from_path(
             dcos_installer=artifact_path,
@@ -71,7 +62,7 @@ def test_adminrouter_grpc_proxy_port(docker_backend: Docker,
 
         master = next(iter(cluster.masters))
         master_ip = master.public_ip_address
-        login_endpoint = 'http://{}/acs/api/v1/auth/login'.format(master_ip)
+        login_endpoint = f'http://{master_ip}/acs/api/v1/auth/login'
         service_login_token = jwt_token(uid, rsa_keypair[0], 30)
 
         token_response = requests.post(
@@ -87,7 +78,7 @@ def test_adminrouter_grpc_proxy_port(docker_backend: Docker,
             port=random_port,
             timeout=None,
         )
-        etcd.metadata = (('authorization', 'token={}'.format(token)),)
+        etcd.metadata = (('authorization', f'token={token}'), )
         etcd.watcher = etcd3.watch.Watcher(
             etcd3.etcdrpc.WatchStub(etcd.channel),
             timeout=etcd.timeout,

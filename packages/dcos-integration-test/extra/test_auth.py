@@ -12,14 +12,18 @@ def auth_enabled() -> bool:
         '/bin/bash', '-c',
         'source /opt/mesosphere/etc/adminrouter.env && echo $ADMINROUTER_ACTIVATE_AUTH_MODULE']).\
         decode().strip('\n')
-    assert out in ['true', 'false'], 'Unknown ADMINROUTER_ACTIVATE_AUTH_MODULE state: {}'.format(out)
+    assert out in [
+        'true',
+        'false',
+    ], f'Unknown ADMINROUTER_ACTIVATE_AUTH_MODULE state: {out}'
+
     return out == 'true'
 
 
 def test_adminrouter_access_control_enforcement(dcos_api_session: DcosApiSession,
                                                 noauth_api_session: DcosApiSession) -> None:
-    reason = 'Can only test adminrouter enforcement if auth is enabled'
     if not auth_enabled():
+        reason = 'Can only test adminrouter enforcement if auth is enabled'
         pytest.skip(reason)
     r = noauth_api_session.get('/acs/api/v1')
     assert r.status_code == 401

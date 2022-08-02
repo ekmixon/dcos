@@ -99,9 +99,7 @@ def generate_rs256_jwt(
 
     key = decode_pem_key(key_pem)
 
-    jwt_token = jwt.encode(payload, key, algorithm='RS256').decode('ascii')
-
-    return jwt_token
+    return jwt.encode(payload, key, algorithm='RS256').decode('ascii')
 
 
 def generate_hs256_jwt(
@@ -135,6 +133,4 @@ def generate_hs256_jwt(
 
     key = load_key(key_path)
 
-    jwt_token = jwt.encode(payload, key, algorithm='HS256').decode('ascii')
-
-    return jwt_token
+    return jwt.encode(payload, key, algorithm='HS256').decode('ascii')

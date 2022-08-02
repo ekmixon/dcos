@@ -116,8 +116,11 @@ def _service_discovery_test(dcos_api_session: DcosApiSession, docker_network_bri
         r = requests.post('http://{}:{}/your_ip'.format(
             service_points[0].host, service_points[0].port), payload)
         if r.status_code != 200:
-            msg = "Test server replied with non-200 reply: '{status_code} {reason}. "
-            msg += "Detailed explanation of the problem: {text}"
+            msg = (
+                "Test server replied with non-200 reply: '{status_code} {reason}. "
+                + "Detailed explanation of the problem: {text}"
+            )
+
             pytest.fail(msg.format(status_code=r.status_code, reason=r.reason, text=r.text))
 
         r_data = r.json()
@@ -159,13 +162,15 @@ MarathonAddresses = collections.namedtuple("MarathonAddresses", ["host", "contai
 
 def get_ipv4_addresses(hostname: Any) -> frozenset:
     res = socket.getaddrinfo(hostname, 0, family=socket.AF_INET, type=socket.SOCK_STREAM)
-    return frozenset([sockaddr[0] for (family, type, proto, canonname, sockaddr) in res])
+    return frozenset(
+        sockaddr[0] for (family, type, proto, canonname, sockaddr) in res
+    )
 
 
 def get_dns_addresses_by_app_name(app_name: str) -> DNSAddresses:
-    container_ip_name = '{}.marathon.containerip.dcos.thisdcos.directory'.format(app_name)
-    agent_ip_name = '{}.marathon.agentip.dcos.thisdcos.directory'.format(app_name)
-    auto_ip_name = '{}.marathon.autoip.dcos.thisdcos.directory'.format(app_name)
+    container_ip_name = f'{app_name}.marathon.containerip.dcos.thisdcos.directory'
+    agent_ip_name = f'{app_name}.marathon.agentip.dcos.thisdcos.directory'
+    auto_ip_name = f'{app_name}.marathon.autoip.dcos.thisdcos.directory'
     container_ips = get_ipv4_addresses(container_ip_name)
     agent_ips = get_ipv4_addresses(agent_ip_name)
     auto_ips = get_ipv4_addresses(auto_ip_name)
@@ -173,17 +178,14 @@ def get_dns_addresses_by_app_name(app_name: str) -> DNSAddresses:
 
 
 def get_marathon_addresses_by_service_points(service_points: list) -> MarathonAddresses:
-    marathon_host_addrs = frozenset([point.host for point in service_points])
-    marathon_ip_addrs = frozenset([point.ip for point in service_points])
+    marathon_host_addrs = frozenset(point.host for point in service_points)
+    marathon_ip_addrs = frozenset(point.ip for point in service_points)
     return MarathonAddresses(marathon_host_addrs, marathon_ip_addrs)
 
 
 def get_dcos_dns_records() -> Optional[dict]:
     response = requests.get('http://127.0.0.1:62080/v1/records')
-    if response.status_code != 200:
-        return None
-    data = response.json()  # type: Optional[dict]
-    return data
+    return None if response.status_code != 200 else response.json()
 
 
 def assert_service_discovery(dcos_api_session: DcosApiSession, app_definition: Any, net_types: list) -> None:
@@ -201,8 +203,8 @@ def assert_service_discovery(dcos_api_session: DcosApiSession, app_definition: A
             assert not frozenset.intersection(marathon_addrs.host, marathon_addrs.container)
 
         @retrying.retry(wait_fixed=1000,
-                        stop_max_delay=DNS_ENTRY_UPDATE_TIMEOUT * 1000,
-                        retry_on_exception=lambda x: True)
+                                stop_max_delay=DNS_ENTRY_UPDATE_TIMEOUT * 1000,
+                                retry_on_exception=lambda x: True)
         def _ensure_dns_converged() -> None:
             app_name = app_definition['id']
             try:
@@ -212,12 +214,15 @@ def assert_service_discovery(dcos_api_session: DcosApiSession, app_definition: A
                 logging.info("dcos-dns records: {}".format(records))
                 raise err
             asserted = False
-            if len(net_types) == 2:
-                if (DNSOverlay in net_types) and (DNSPortMap in net_types):
-                    assert marathon_addrs.host == dns_addrs.agent
-                    assert marathon_addrs.host == dns_addrs.auto
-                    assert marathon_addrs.container == dns_addrs.container
-                    asserted = True
+            if (
+                len(net_types) == 2
+                and (DNSOverlay in net_types)
+                and (DNSPortMap in net_types)
+            ):
+                assert marathon_addrs.host == dns_addrs.agent
+                assert marathon_addrs.host == dns_addrs.auto
+                assert marathon_addrs.container == dns_addrs.container
+                asserted = True
             if len(net_types) == 1:
                 if DNSOverlay in net_types:
                     assert marathon_addrs.host == dns_addrs.agent
@@ -312,11 +317,16 @@ def test_if_search_is_working(dcos_api_session: DcosApiSession) -> None:
     with dcos_api_session.marathon.deploy_and_cleanup(app_definition):
         service_points = dcos_api_session.marathon.get_app_service_endpoints(app_definition['id'])
         # Get the status
-        r = requests.get('http://{}:{}/dns_search'.format(service_points[0].host,
-                                                          service_points[0].port))
+        r = requests.get(
+            f'http://{service_points[0].host}:{service_points[0].port}/dns_search'
+        )
+
         if r.status_code != 200:
-            msg = "Test server replied with non-200 reply: '{0} {1}. "
-            msg += "Detailed explanation of the problem: {2}"
+            msg = (
+                "Test server replied with non-200 reply: '{0} {1}. "
+                + "Detailed explanation of the problem: {2}"
+            )
+
             pytest.fail(msg.format(r.status_code, r.reason, r.text))
 
         r_data = r.json()
@@ -330,9 +340,8 @@ def test_if_search_is_working(dcos_api_session: DcosApiSession) -> None:
         expanded_config = test_helpers.get_expanded_config()
         if expanded_config['dns_search']:
             assert r_data['search_hit_leader'] in dcos_api_session.masters
-            assert r_data['always_hit_leader'] in dcos_api_session.masters
-            assert r_data['always_miss'] == expected_error
         else:  # No dns search, search hit should miss.
             assert r_data['search_hit_leader'] == expected_error
-            assert r_data['always_hit_leader'] in dcos_api_session.masters
-            assert r_data['always_miss'] == expected_error
+
+        assert r_data['always_miss'] == expected_error
+        assert r_data['always_hit_leader'] in dcos_api_session.masters

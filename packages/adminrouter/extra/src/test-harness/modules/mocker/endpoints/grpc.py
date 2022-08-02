@@ -32,23 +32,19 @@ class MockServiceServicer(grpc_endpoint_pb2_grpc.MockServiceServicer):
         elif self._get_context_data_f("always_stall"):
             stall_time = self._get_context_data_f("stall_time")
             log.debug(
-                "gRPC server is stalling the unary request for `{}` seconds".format(
-                    stall_time))
+                f"gRPC server is stalling the unary request for `{stall_time}` seconds"
+            )
+
             time.sleep(stall_time)
 
-        return grpc_endpoint_pb2.StringMessage(
-            message="received: {}".format(request.message))
+        return grpc_endpoint_pb2.StringMessage(message=f"received: {request.message}")
 
     def ServerSteramDoSomething(self, request, context):
         for i in request.messageIDs:
-            response = grpc_endpoint_pb2.IntMessage(messageID=i)
-            yield response
+            yield grpc_endpoint_pb2.IntMessage(messageID=i)
 
     def ClientStreamDoSomething(self, request_iterator, context):
-        receivedIDs = []
-
-        for message in request_iterator:
-            receivedIDs.append(message.messageID)
+        receivedIDs = [message.messageID for message in request_iterator]
 
         return grpc_endpoint_pb2.IntCollectionMessage(messageIDs=receivedIDs)
 
@@ -68,11 +64,11 @@ class GRPCEndpoint(generic.Endpoint):
         """
         if certfile is not None and keyfile is not None and cafile is not None:
             self._is_tls = True
-            endpoint_id = "grpcs://{}:{}".format(ip, port)
+            endpoint_id = f"grpcs://{ip}:{port}"
             log.debug("gRPC server is runs in TLS mode")
         else:
             self._is_tls = False
-            endpoint_id = "grpc://{}:{}".format(ip, port)
+            endpoint_id = f"grpc://{ip}:{port}"
             log.debug("gRPC server is runs in plaintext mode")
         super().__init__(endpoint_id)
 
@@ -92,7 +88,7 @@ class GRPCEndpoint(generic.Endpoint):
             return self._context.data[key]
 
     def start(self):
-        log.debug("gRPC server {} is starting".format(self.id))
+        log.debug(f"gRPC server {self.id} is starting")
         self._server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         grpc_endpoint_pb2_grpc.add_MockServiceServicer_to_server(
             MockServiceServicer(self.get_context_data),
@@ -109,19 +105,15 @@ class GRPCEndpoint(generic.Endpoint):
                 require_client_auth=True,
             )
             self._server.add_secure_port(
-                '{}:{}'.format(
-                    self._context.data['listen_ip'],
-                    self._context.data['listen_port'],
-                ),
+                f"{self._context.data['listen_ip']}:{self._context.data['listen_port']}",
                 server_credentials,
             )
+
         else:
             self._server.add_insecure_port(
-                '{}:{}'.format(
-                    self._context.data['listen_ip'],
-                    self._context.data['listen_port'],
-                )
+                f"{self._context.data['listen_ip']}:{self._context.data['listen_port']}"
             )
+
         self._server.start()
 
     def stop(self):

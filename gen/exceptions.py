@@ -7,7 +7,7 @@ class ValidationError(Exception):
         super().__init__(str(errors), str(unset))
 
     def __str__(self):
-        return "<ValidationError errors: {}; unset: {}".format(self.errors, self.unset)
+        return f"<ValidationError errors: {self.errors}; unset: {self.unset}"
 
     def __repr__(self):
         return self.__str__()
@@ -18,7 +18,7 @@ class ExhibitorTLSBootstrapError(Exception):
         self.errors = errors
 
     def __str__(self):
-        return "<ExhibitorTLSBootstrapError errors: {}>".format(', '.join(self.errors))
+        return f"<ExhibitorTLSBootstrapError errors: {', '.join(self.errors)}>"
 
     def __repr__(self):
         return self.__str__()

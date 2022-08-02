@@ -216,7 +216,7 @@ class LineBufferFilter:
     def _all_found(self):
         """Helper - check if all search criterias have been met ?
         """
-        return all([sc.occurrences <= 0 for sc in self._filter_regexpes.values()])
+        return all(sc.occurrences <= 0 for sc in self._filter_regexpes.values())
 
     @property
     def extra_matches(self):
@@ -360,8 +360,11 @@ def setup_thread_debugger():
         d.update(frame.f_locals)
 
         i = code.InteractiveConsole(d)
-        message = "Signal received : entering python shell.\nTraceback:\n"
-        message += ''.join(traceback.format_stack(frame))
+        message = (
+            "Signal received : entering python shell.\nTraceback:\n"
+            + ''.join(traceback.format_stack(frame))
+        )
+
         i.interact(message)
 
     signal.signal(signal.SIGUSR1, debug)  # Register handler
@@ -370,13 +373,9 @@ def setup_thread_debugger():
 def ar_listen_link_setup(role, is_ee):
     assert role in ['master', 'agent']
 
-    if is_ee:
-        flavour = 'ee'
-    else:
-        flavour = 'open'
-
-    src_path = "/opt/mesosphere/etc/adminrouter-listen-{}.conf".format(flavour)
-    dst_path = "adminrouter-listen-{}.conf".format(role)
+    flavour = 'ee' if is_ee else 'open'
+    src_path = f"/opt/mesosphere/etc/adminrouter-listen-{flavour}.conf"
+    dst_path = f"adminrouter-listen-{role}.conf"
 
     if os.path.exists(src_path):
         assert os.path.islink(src_path)
@@ -419,10 +418,7 @@ def auth_type_str(repo_type):
         String denoting valid authentication type string as used in
         WWW-Authenticate header.
     """
-    if repo_type:
-        return 'acsjwt'
-    else:
-        return 'oauthjwt'
+    return 'acsjwt' if repo_type else 'oauthjwt'
 
 
 def jwt_type_str(repo_type):
@@ -435,7 +431,4 @@ def jwt_type_str(repo_type):
     Returns:
         String denoting JWT type string.
     """
-    if repo_type:
-        return 'RS256'
-    else:
-        return 'HS256'
+    return 'RS256' if repo_type else 'HS256'

@@ -30,8 +30,13 @@ def zk_client(static_three_master_cluster: Cluster) -> KazooClient:
     """
     ZooKeeper client connected to a given DC/OS cluster.
     """
-    zk_hostports = ','.join(['{}:2181'.format(m.public_ip_address)
-                             for m in static_three_master_cluster.masters])
+    zk_hostports = ','.join(
+        [
+            f'{m.public_ip_address}:2181'
+            for m in static_three_master_cluster.masters
+        ]
+    )
+
     retry_policy = KazooRetry(
         max_tries=-1,
         delay=1,
@@ -59,7 +64,7 @@ def _zk_set_flag(zk: KazooClient, ephemeral: bool = False) -> str:
     """
     Store the `FLAG` value in ZooKeeper in a random Znode.
     """
-    znode = '/{}'.format(uuid.uuid4())
+    znode = f'/{uuid.uuid4()}'
     zk.retry(zk.create, znode, makepath=True, ephemeral=ephemeral)
     zk.retry(zk.set, znode, FLAG)
     return znode
@@ -73,7 +78,7 @@ def _zk_flag_exists(zk: KazooClient, znode: str) -> bool:
         value = zk.retry(zk.get, znode)
     except NoNodeError:
         return False
-    return bool(value[0] == FLAG)
+    return value[0] == FLAG
 
 
 @pytest.mark.skipif(

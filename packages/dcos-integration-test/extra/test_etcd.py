@@ -24,7 +24,7 @@ class TestEtcdctlOpen:
         if is_enterprise:
             pytest.skip("not suitable for Enterprise DC/OS")
 
-        key = "/int-testing/foo-{}".format(uuid.uuid4())
+        key = f"/int-testing/foo-{uuid.uuid4()}"
         value = str(uuid.uuid4())
 
         etcd_ctl = EtcdCtl()

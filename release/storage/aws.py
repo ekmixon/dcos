@@ -46,9 +46,7 @@ class S3StorageProvider(AbstractStorageProvider):
 
     @property
     def object_prefix(self):
-        if self.__object_prefix is None:
-            return ''
-        return self.__object_prefix + '/'
+        return '' if self.__object_prefix is None else f'{self.__object_prefix}/'
 
     def _get_path(self, name):
 
@@ -78,7 +76,7 @@ class S3StorageProvider(AbstractStorageProvider):
     def copy(self, source_path, destination_path):
         src_object = self.get_object(source_path)
         new_object = self.get_object(destination_path)
-        old_path = src_object.bucket_name + '/' + src_object.key
+        old_path = f'{src_object.bucket_name}/{src_object.key}'
 
         new_object.copy_from(CopySource=old_path, ACL='bucket-owner-full-control')
 
@@ -88,8 +86,7 @@ class S3StorageProvider(AbstractStorageProvider):
                local_path: Optional[str]=None,
                no_cache: bool=False,
                content_type: Optional[str]=None):
-        extra_args = {}
-        extra_args['ACL'] = 'bucket-owner-full-control'
+        extra_args = {'ACL': 'bucket-owner-full-control'}
         if no_cache:
             extra_args['CacheControl'] = 'no-cache'
         if content_type:
@@ -119,7 +116,7 @@ class S3StorageProvider(AbstractStorageProvider):
             name = object_summary.key
 
             # Sanity check the prefix is there before removing.
-            assert name.startswith(self.__object_prefix + '/')
+            assert name.startswith(f'{self.__object_prefix}/')
 
             # Add the unprefixed name since the caller of this function doesn't
             # know we've added the prefix / only sees inside the prefix ever.

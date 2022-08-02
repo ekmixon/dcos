@@ -669,7 +669,7 @@ class TestCache:
                          cache_refresh_lock_timeout=refresh_lock_timeout,
                          )
         agent_id = AGENT1_ID
-        url = ar.make_url_from_path('/agent/{}/blah/blah'.format(agent_id))
+        url = ar.make_url_from_path(f'/agent/{agent_id}/blah/blah')
         v = Vegeta(log_catcher, target=url, jwt=valid_user_header, rate=3)
 
         # Make mesos just a bit :)
@@ -788,14 +788,16 @@ class TestCacheMesosLeader:
         local_leader_ip = "127.0.0.2"
         filter_regexp_pre = {
             'Failed to instantiate the resolver': SearchCriteria(0, True),
-            'mesos leader is non-local: `{}`'.format(nonlocal_leader_ip):
-                SearchCriteria(1, True),
-            ('Private IP address of the host is unknown, '
-                'aborting cache-entry creation for mesos leader'):
-                    SearchCriteria(0, True),
-            'Updated mesos leader cache':
-                SearchCriteria(1, True),
+            f'mesos leader is non-local: `{nonlocal_leader_ip}`': SearchCriteria(
+                1, True
+            ),
+            'Private IP address of the host is unknown, '
+            'aborting cache-entry creation for mesos leader': SearchCriteria(
+                0, True
+            ),
+            'Updated mesos leader cache': SearchCriteria(1, True),
         }
+
         filter_regexp_post = {
             'Failed to instantiate the resolver': SearchCriteria(0, True),
             'mesos leader is local': SearchCriteria(1, True),
@@ -1027,8 +1029,9 @@ class TestCacheMarathon:
         app.pop("labels", None)
 
         filter_regexp = {
-            "Labels not found in app '{}'".format(app["id"]): SearchCriteria(1, True),
+            f"""Labels not found in app '{app["id"]}'""": SearchCriteria(1, True)
         }
+
         self._assert_filter_regexp_for_invalid_app(
             filter_regexp, app, nginx_class, mocker, valid_user_header)
 
@@ -1038,9 +1041,11 @@ class TestCacheMarathon:
         app["labels"].pop("DCOS_SERVICE_SCHEME", None)
 
         filter_regexp = {
-            "Cannot find DCOS_SERVICE_SCHEME for app '{}'".format(app["id"]):
-                SearchCriteria(1, True),
+            f"""Cannot find DCOS_SERVICE_SCHEME for app '{app["id"]}'""": SearchCriteria(
+                1, True
+            )
         }
+
 
         self._assert_filter_regexp_for_invalid_app(
             filter_regexp, app, nginx_class, mocker, valid_user_header)
@@ -1051,9 +1056,11 @@ class TestCacheMarathon:
         app["labels"].pop("DCOS_SERVICE_PORT_INDEX", None)
 
         filter_regexp = {
-            "Cannot find DCOS_SERVICE_PORT_INDEX for app '{}'".format(app["id"]):
-                SearchCriteria(1, True),
+            f"""Cannot find DCOS_SERVICE_PORT_INDEX for app '{app["id"]}'""": SearchCriteria(
+                1, True
+            )
         }
+
         self._assert_filter_regexp_for_invalid_app(
             filter_regexp, app, nginx_class, mocker, valid_user_header)
 
@@ -1111,9 +1118,11 @@ class TestCacheMarathon:
         app["labels"]["DCOS_SERVICE_PORT_INDEX"] = "not a number"
 
         filter_regexp = {
-            "Cannot convert port to number for app '{}'".format(app["id"]):
-                SearchCriteria(1, True),
+            f"""Cannot convert port to number for app '{app["id"]}'""": SearchCriteria(
+                1, True
+            )
         }
+
 
         self._assert_filter_regexp_for_invalid_app(
             filter_regexp, app, nginx_class, mocker, valid_user_header)
@@ -1124,9 +1133,11 @@ class TestCacheMarathon:
         app["tasks"] = []
 
         filter_regexp = {
-            "No task in state TASK_RUNNING for app '{}'".format(app["id"]):
-                SearchCriteria(1, True),
+            f"""No task in state TASK_RUNNING for app '{app["id"]}'""": SearchCriteria(
+                1, True
+            )
         }
+
 
         self._assert_filter_regexp_for_invalid_app(
             filter_regexp, app, nginx_class, mocker, valid_user_header)
@@ -1137,9 +1148,11 @@ class TestCacheMarathon:
         app["tasks"] = [{"state": "TASK_FAILED"}]
 
         filter_regexp = {
-            "No task in state TASK_RUNNING for app '{}'".format(app["id"]):
-                SearchCriteria(1, True),
+            f"""No task in state TASK_RUNNING for app '{app["id"]}'""": SearchCriteria(
+                1, True
+            )
         }
+
 
         self._assert_filter_regexp_for_invalid_app(
             filter_regexp, app, nginx_class, mocker, valid_user_header)
@@ -1150,9 +1163,11 @@ class TestCacheMarathon:
         app["tasks"][0].pop("host", None)
 
         filter_regexp = {
-            "Cannot find host or ip for app '{}'".format(app["id"]):
-                SearchCriteria(1, True),
+            f"""Cannot find host or ip for app '{app["id"]}'""": SearchCriteria(
+                1, True
+            )
         }
+
 
         self._assert_filter_regexp_for_invalid_app(
             filter_regexp, app, nginx_class, mocker, valid_user_header)

@@ -48,9 +48,9 @@ def print_repo_list(packages):
         if len(group) == 1:
             print(group[0])
         else:
-            print(name + ':')
+            print(f'{name}:')
             for package in group:
-                print("  " + package.version)
+                print(f"  {package.version}")
 
 
 def uninstall(install, repository):
@@ -58,8 +58,8 @@ def uninstall(install, repository):
     # Remove dcos.target
     # TODO(cmaloney): Make this not quite so magical
     print("Removing dcos.target")
-    print(os.path.dirname(install.systemd_dir) + "/dcos.target")
-    remove_file(os.path.dirname(install.systemd_dir) + "/dcos.target")
+    print(f"{os.path.dirname(install.systemd_dir)}/dcos.target")
+    remove_file(f"{os.path.dirname(install.systemd_dir)}/dcos.target")
 
     # Cleanup all systemd units
     # TODO(cmaloney): This is much more work than we need to do the job
@@ -71,8 +71,8 @@ def uninstall(install, repository):
     # TODO(cmaloney): This should be a method of Install.
     print("Removing all runtime / activation directories")
     active_names = install.get_active_names()
-    new_names = [name + '.new' for name in active_names]
-    old_names = [name + '.old' for name in active_names]
+    new_names = [f'{name}.new' for name in active_names]
+    old_names = [f'{name}.old' for name in active_names]
 
     all_names = active_names + new_names + old_names
 
@@ -94,26 +94,25 @@ def uninstall(install, repository):
 def find_checks(install, repository):
     checks = {}
     for active_package in install.get_active():
-        tmp_checks = {}
-        tmp_checks[active_package] = []
+        tmp_checks = {active_package: []}
         package_check_dir = repository.load(active_package).check_dir
         if not os.path.isdir(package_check_dir):
             continue
         for check_file in sorted(os.listdir(package_check_dir)):
             if not os.access(os.path.join(package_check_dir, check_file), os.X_OK):
-                print('WARNING: `{}` is not executable'.format(check_file), file=sys.stderr)
+                print(f'WARNING: `{check_file}` is not executable', file=sys.stderr)
                 continue
             tmp_checks[active_package].append(check_file)
         if tmp_checks[active_package]:
-            checks.update(tmp_checks)
+            checks |= tmp_checks
     return checks
 
 
 def list_checks(checks):
     for check_dir, check_files in sorted(checks.items()):
-        print('{}'.format(check_dir))
+        print(f'{check_dir}')
         for check_file in check_files:
-            print(' - {}'.format(check_file))
+            print(f' - {check_file}')
 
 
 def run_checks(checks, install, repository):
@@ -124,7 +123,7 @@ def run_checks(checks, install, repository):
             try:
                 check_call([os.path.join(check_dir, check_file)])
             except CalledProcessError:
-                print('Check failed: {}'.format(check_file), file=sys.stderr)
+                print(f'Check failed: {check_file}', file=sys.stderr)
                 exit_code = 1
     return exit_code
 

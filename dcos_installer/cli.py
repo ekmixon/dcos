@@ -17,9 +17,7 @@ log = logging.getLogger(__name__)
 
 
 def setup_logger(options):
-    level = 'INFO'
-    if options.verbose:
-        level = 'DEBUG'
+    level = 'DEBUG' if options.verbose else 'INFO'
     coloredlogs.install(
         level=level,
         level_styles={
@@ -57,15 +55,18 @@ dispatch_dict_simple = {
     'web': (
         web_installer,
         'Starting DC/OS installer in web mode',
-        'Run the web interface'),
+        'Run the web interface',
+    ),
     'genconf': (
         lambda args: backend.do_configure(),
         'EXECUTING CONFIGURATION GENERATION',
-        'Create DC/OS install files customized according to {}.'.format(dcos_installer.constants.CONFIG_PATH)),
+        f'Create DC/OS install files customized according to {dcos_installer.constants.CONFIG_PATH}.',
+    ),
     'aws-cloudformation': (
         lambda args: backend.do_aws_cf_configure(),
         'EXECUTING AWS CLOUD FORMATION TEMPLATE GENERATION',
-        'Generate AWS Advanced AWS CloudFormation templates using the provided config')
+        'Generate AWS Advanced AWS CloudFormation templates using the provided config',
+    ),
 }
 
 
@@ -81,8 +82,7 @@ def do_hash_password(password):
                 log.error('Must provide a non-empty password')
 
     print_header("HASHING PASSWORD TO SHA512")
-    hashed_password = sha512_crypt.encrypt(password)
-    return hashed_password
+    return sha512_crypt.encrypt(password)
 
 
 def dispatch(args):
@@ -104,7 +104,7 @@ def dispatch(args):
             print_header(action[1])
         sys.exit(action[0](args))
 
-    print("Internal Error: No known way to dispatch {}".format(args.action))
+    print(f"Internal Error: No known way to dispatch {args.action}")
     sys.exit(1)
 
 
